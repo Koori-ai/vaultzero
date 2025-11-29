@@ -1,0 +1,18 @@
+# Core AI Framework
+langchain
+langgraph
+langchain-anthropic
+
+# Vector DB & Embeddings
+chromadb
+sentence-transformers
+
+# Observability
+langfuse
+
+# UI
+streamlit
+
+# Utilities
+python-dotenv
+pandas
