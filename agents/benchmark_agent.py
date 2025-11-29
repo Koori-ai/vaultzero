@@ -171,11 +171,11 @@ Be specific and actionable. Focus on meaningful differences."""
 
 # Test code
 if __name__ == "__main__":
-    # Sample system description and assessment results
-    test_system = "Healthcare payment processing system handling Medicare claims"
+    # GENERIC TEST DATA - For testing only
+    test_system = "Cloud-based enterprise SaaS application"
     
     test_assessment = {
-        "system_name": "Medicare Claims System",
+        "system_name": "Enterprise Cloud Application",
         "pillars": {
             "identity": {"maturity_level": "INITIAL", "score": 2},
             "devices": {"maturity_level": "ADVANCED", "score": 3},

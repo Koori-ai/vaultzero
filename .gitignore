@@ -1,0 +1,6 @@
+﻿__pycache__/
+*.pyc
+venv/
+data/chroma_db/
+.env
+*_test_results.json

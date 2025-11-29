@@ -5,8 +5,11 @@ Conducts interactive Zero Trust maturity assessments
 
 from anthropic import Anthropic
 import os
-from typing import Dict, List
+from typing import Dict
 import json
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class AssessmentAgent:
     def __init__(self):
@@ -18,63 +21,93 @@ class AssessmentAgent:
         self.client = Anthropic(api_key=api_key)
         self.model = "claude-sonnet-4-20250514"
         
-    def quick_assessment(self, system_description: str, answers: Dict[str, str]) -> Dict:
+    def conduct_assessment(self, system_description: str, answers: Dict[str, str]) -> Dict:
         """
-        Quick assessment with pre-provided answers
+        Conduct Zero Trust assessment with user-provided answers
         
         Args:
-            system_description: System to assess
+            system_description: Description of system to assess
             answers: Dictionary of pillar -> answer
             
         Returns:
-            Assessment results
+            Complete assessment results
         """
         
         prompt = f"""You are a Zero Trust security expert. Assess this system's ZT maturity.
 
-System: {system_description}
+SYSTEM TO ASSESS:
+{system_description}
 
-User provided these answers:
-
+USER'S RESPONSES BY PILLAR:
 {json.dumps(answers, indent=2)}
 
 Based on these answers, provide a detailed assessment in JSON format:
 {{
+    "system_name": "Extract from description or create appropriate name",
     "pillars": {{
-        "Identity": {{"score": X.X, "maturity": "LEVEL", "findings": "details"}},
-        "Devices": {{"score": X.X, "maturity": "LEVEL", "findings": "details"}},
-        "Networks": {{"score": X.X, "maturity": "LEVEL", "findings": "details"}},
-        "Applications": {{"score": X.X, "maturity": "LEVEL", "findings": "details"}},
-        "Data": {{"score": X.X, "maturity": "LEVEL", "findings": "details"}}
+        "identity": {{
+            "score": <0-4>,
+            "maturity_level": "TRADITIONAL/INITIAL/ADVANCED/OPTIMAL",
+            "findings": "2-3 sentence assessment",
+            "gaps": ["Specific gap 1", "Specific gap 2"],
+            "strengths": ["Specific strength 1"]
+        }},
+        "devices": {{
+            "score": <0-4>,
+            "maturity_level": "TRADITIONAL/INITIAL/ADVANCED/OPTIMAL",
+            "findings": "2-3 sentence assessment",
+            "gaps": ["Specific gap 1"],
+            "strengths": ["Specific strength 1"]
+        }},
+        "networks": {{
+            "score": <0-4>,
+            "maturity_level": "TRADITIONAL/INITIAL/ADVANCED/OPTIMAL",
+            "findings": "2-3 sentence assessment",
+            "gaps": ["Specific gap 1"],
+            "strengths": ["Specific strength 1"]
+        }},
+        "applications": {{
+            "score": <0-4>,
+            "maturity_level": "TRADITIONAL/INITIAL/ADVANCED/OPTIMAL",
+            "findings": "2-3 sentence assessment",
+            "gaps": ["Specific gap 1"],
+            "strengths": ["Specific strength 1"]
+        }},
+        "data": {{
+            "score": <0-4>,
+            "maturity_level": "TRADITIONAL/INITIAL/ADVANCED/OPTIMAL",
+            "findings": "2-3 sentence assessment",
+            "gaps": ["Specific gap 1"],
+            "strengths": ["Specific strength 1"]
+        }}
     }},
-    "overall_score": X.X,
-    "overall_maturity": "LEVEL",
-    "key_gaps": ["list of 3-5 main gaps"],
-    "quick_wins": ["list of 3 quick improvements"],
-    "recommendations": ["list of 3-5 strategic recommendations"]
+    "overall_score": <average of all pillar scores>,
+    "overall_maturity_level": "TRADITIONAL/INITIAL/ADVANCED/OPTIMAL",
+    "key_gaps": ["Top 5 critical gaps across all pillars"],
+    "quick_wins": ["3-5 low-effort, high-impact improvements"],
+    "strategic_recommendations": ["3-5 long-term strategic initiatives"]
 }}
 
-Maturity levels:
-- 0-0.9: TRADITIONAL
-- 1.0-1.9: INITIAL  
-- 2.0-2.9: ADVANCED
-- 3.0-4.0: OPTIMAL
+MATURITY SCORING:
+- 0-0.9: TRADITIONAL (Legacy security, perimeter-based)
+- 1.0-1.9: INITIAL (Starting ZT journey, some modern controls)
+- 2.0-2.9: ADVANCED (Strong ZT implementation, continuous improvement)
+- 3.0-4.0: OPTIMAL (Industry-leading ZT maturity)
 
-Provide ONLY the JSON, no other text."""
+Be specific, actionable, and objective. Provide ONLY valid JSON."""
 
+        print("\n🔍 Running Zero Trust assessment with Claude API...")
+        
         response = self.client.messages.create(
             model=self.model,
-            max_tokens=3000,
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
+            max_tokens=4000,
+            messages=[{"role": "user", "content": prompt}]
         )
         
         result_text = response.content[0].text
         
         # Extract JSON from response
         try:
-            # Remove markdown code blocks if present
             if "```json" in result_text:
                 result_text = result_text.split("```json")[1].split("```")[0].strip()
             elif "```" in result_text:
@@ -83,42 +116,96 @@ Provide ONLY the JSON, no other text."""
             assessment = json.loads(result_text)
             return assessment
         except json.JSONDecodeError as e:
-            print(f"Error parsing JSON: {e}")
+            print(f"❌ Error parsing JSON: {e}")
             print(f"Raw response: {result_text}")
             return {"error": "Failed to parse assessment", "raw": result_text}
+    
+    def display_assessment(self, assessment: Dict):
+        """Display assessment results in readable format"""
+        print("\n" + "="*70)
+        print("📊 ZERO TRUST MATURITY ASSESSMENT RESULTS")
+        print("="*70)
+        
+        print(f"\n🏢 System: {assessment.get('system_name', 'N/A')}")
+        print(f"📈 Overall Score: {assessment['overall_score']:.1f}/4.0")
+        print(f"🎯 Overall Maturity: {assessment['overall_maturity_level']}")
+        
+        print("\n" + "="*70)
+        print("📋 PILLAR-BY-PILLAR ASSESSMENT")
+        print("="*70)
+        
+        for pillar_name, pillar_data in assessment['pillars'].items():
+            print(f"\n🔹 {pillar_name.upper()}")
+            print(f"   Score: {pillar_data['score']:.1f}/4.0 | Maturity: {pillar_data['maturity_level']}")
+            print(f"   {pillar_data['findings']}")
+            
+            if pillar_data.get('strengths'):
+                print(f"   ✅ Strengths:")
+                for strength in pillar_data['strengths']:
+                    print(f"      • {strength}")
+            
+            if pillar_data.get('gaps'):
+                print(f"   ⚠️  Gaps:")
+                for gap in pillar_data['gaps']:
+                    print(f"      • {gap}")
+        
+        print("\n" + "="*70)
+        print("🎯 KEY FINDINGS")
+        print("="*70)
+        
+        print("\n⚠️  Critical Gaps:")
+        for gap in assessment['key_gaps']:
+            print(f"   • {gap}")
+        
+        print("\n⚡ Quick Wins (Start Here):")
+        for win in assessment['quick_wins']:
+            print(f"   • {win}")
+        
+        print("\n🚀 Strategic Recommendations:")
+        for rec in assessment['strategic_recommendations']:
+            print(f"   • {rec}")
+        
+        print("\n" + "="*70)
+    
+    def run_assessment(self, system_description: str, answers: Dict[str, str]):
+        """Complete assessment workflow"""
+        print("\n" + "="*70)
+        print("🎯 VAULTZERO ASSESSMENT AGENT")
+        print("="*70)
+        
+        # Conduct assessment
+        results = self.conduct_assessment(system_description, answers)
+        
+        # Display results
+        if 'error' not in results:
+            self.display_assessment(results)
+        
+        return results
 
 
 # Test function
-def test_assessment_agent():
-    """Test the assessment agent"""
-    from dotenv import load_dotenv
-    load_dotenv()
+if __name__ == "__main__":
+    # GENERIC TEST DATA - For testing only
     
     agent = AssessmentAgent()
     
-    # Test system
-    system_desc = "Public-facing web application handling customer PII data, hosted on AWS"
+    test_system = "Cloud-based enterprise SaaS application with customer data"
     
-    # Sample answers
-    answers = {
-        "Identity": "We use Okta SSO with MFA enforced for all users. Role-based access control is implemented.",
-        "Devices": "Corporate laptops are managed via Intune. BYOD is allowed for contractors with basic MDM.",
-        "Networks": "Applications are in AWS with security groups. No microsegmentation implemented yet.",
-        "Applications": "Security testing in CI/CD. Runtime monitoring with basic logging.",
-        "Data": "PII is identified but not classified systematically. Database encryption at rest only."
+    test_answers = {
+        "identity": "Single sign-on with MFA enforced for all users. Role-based access control implemented with regular reviews.",
+        "devices": "Corporate devices managed with endpoint detection and response. BYOD allowed with mobile device management.",
+        "networks": "Cloud-hosted infrastructure with security groups. Network segmentation partially implemented.",
+        "applications": "Security testing integrated in CI/CD pipeline. Application-level monitoring and logging in place.",
+        "data": "Data classification framework exists but not fully enforced. Encryption at rest implemented, in-transit encryption partial."
     }
     
     print("Testing VaultZero Assessment Agent...")
-    print("="*60)
+    print("="*70)
     
-    result = agent.quick_assessment(system_desc, answers)
+    results = agent.run_assessment(test_system, test_answers)
     
-    print("\nAssessment Results:")
-    print("="*60)
-    print(json.dumps(result, indent=2))
+    # Save results
+    with open("assessment_test_results.json", "w") as f:
+        json.dump(results, f, indent=2)
     
-    return result
-
-
-if __name__ == "__main__":
-    test_assessment_agent()
+    print("\n✅ Results saved to assessment_test_results.json")
