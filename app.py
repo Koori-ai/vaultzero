@@ -7,6 +7,7 @@ import streamlit as st
 import json
 from datetime import datetime
 from orchestrator import VaultZeroOrchestrator
+import anthropic
 
 # Page config
 st.set_page_config(
@@ -16,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
+# Custom CSS for better styling + FLOATING CHAT BUBBLE
 st.markdown("""
     <style>
     .main-header {
@@ -59,20 +60,175 @@ st.markdown("""
         border-radius: 0.5rem;
         margin: 1rem 0;
     }
+    
+    /* FLOATING CHAT BUBBLE */
+    .floating-chat-bubble {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        width: 70px;
+        height: 70px;
+        background: linear-gradient(135deg, #FF6B35 0%, #1f77b4 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 8px 24px rgba(255, 107, 53, 0.4);
+        z-index: 9999;
+        animation: pulse 2s infinite;
+        border: 3px solid white;
+    }
+    
+    .floating-chat-bubble:hover {
+        transform: scale(1.1);
+        box-shadow: 0 12px 32px rgba(255, 107, 53, 0.6);
+    }
+    
+    .floating-chat-bubble .icon {
+        font-size: 32px;
+        color: white;
+    }
+    
+    @keyframes pulse {
+        0% {
+            box-shadow: 0 8px 24px rgba(255, 107, 53, 0.4);
+        }
+        50% {
+            box-shadow: 0 8px 36px rgba(255, 107, 53, 0.7);
+        }
+        100% {
+            box-shadow: 0 8px 24px rgba(255, 107, 53, 0.4);
+        }
+    }
+    
+    /* Chat badge */
+    .chat-badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        background: #28a745;
+        color: white;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+        border: 2px solid white;
+    }
     </style>
 """, unsafe_allow_html=True)
+
+
+def get_chat_response(user_message: str) -> str:
+    """Get response from Claude API with context awareness"""
+    
+    # Build context from session state
+    context_parts = []
+    
+    # Add assessment results if available
+    if st.session_state.get('assessment_complete') and st.session_state.get('results'):
+        results = st.session_state.results
+        
+        if 'summary' in results:
+            summary = results['summary']
+            context_parts.append(
+                f"User's Assessment Results:\n"
+                f"- Overall Score: {summary.get('current_score', 'N/A')}/4.0\n"
+                f"- Maturity Level: {summary.get('current_maturity', 'N/A')}\n"
+                f"- Percentile: {summary.get('peer_percentile', 'N/A')}th\n"
+                f"- Target: {summary.get('target_maturity', 'N/A')}"
+            )
+        
+        if 'assessment' in results and 'pillars' in results['assessment']:
+            pillar_scores = []
+            for pillar_name, pillar_data in results['assessment']['pillars'].items():
+                pillar_scores.append(
+                    f"  - {pillar_name.title()}: {pillar_data['score']}/4.0 ({pillar_data['maturity_level']})"
+                )
+            if pillar_scores:
+                context_parts.append("Pillar Scores:\n" + "\n".join(pillar_scores))
+    
+    # Build system prompt
+    system_prompt = """You are a Zero Trust security expert assistant integrated into VaultZero, 
+an AI-powered Zero Trust maturity assessment platform.
+
+Your role is to:
+- Answer questions about Zero Trust architecture and principles
+- Help users understand their assessment results
+- Provide guidance on improving Zero Trust maturity
+- Explain scoring and recommendations
+- Give examples of good security practices
+
+The Zero Trust maturity scale is:
+- 1.0 - Initial: Ad-hoc security processes
+- 2.0 - Traditional: Basic perimeter security
+- 3.0 - Advanced: Mature Zero Trust implementation
+- 4.0 - Optimal: Industry-leading Zero Trust
+
+The six pillars are: Identity, Devices, Networks, Applications, Data, Visibility & Analytics.
+
+Be concise, helpful, and specific. Use the user's assessment context when available.
+Keep responses under 250 words unless asked for more detail.
+"""
+    
+    if context_parts:
+        system_prompt += f"\n\nCurrent User Context:\n" + "\n\n".join(context_parts)
+    
+    # Build messages for API
+    messages = []
+    
+    # Add recent chat history (last 6 messages for context)
+    if 'chat_messages' in st.session_state:
+        recent_messages = st.session_state.chat_messages[-6:] if len(st.session_state.chat_messages) > 6 else st.session_state.chat_messages
+        for msg in recent_messages:
+            if msg['role'] != 'system':
+                messages.append({
+                    "role": msg["role"],
+                    "content": msg["content"]
+                })
+    
+    # Add current message
+    messages.append({
+        "role": "user",
+        "content": user_message
+    })
+    
+    try:
+        # Call Claude API
+        client = anthropic.Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
+        
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            system=system_prompt,
+            messages=messages
+        )
+        
+        return response.content[0].text
+        
+    except Exception as e:
+        return f"I apologize, but I encountered an error: {str(e)}\n\nPlease try again or rephrase your question."
+
 
 # Initialize session state
 if 'assessment_complete' not in st.session_state:
     st.session_state.assessment_complete = False
 if 'results' not in st.session_state:
     st.session_state.results = None
+if 'chat_messages' not in st.session_state:
+    st.session_state.chat_messages = []
+if 'chat_open' not in st.session_state:
+    st.session_state.chat_open = False
 
 # Header
 st.markdown('<div class="main-header">🔒 VaultZero</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-header">AI-Powered Zero Trust Maturity Assessment</div>', unsafe_allow_html=True)
 
-# Sidebar
+# Sidebar (CLEAN - NO CHATBOT)
 with st.sidebar:
     st.image("https://via.placeholder.com/300x100/1f77b4/ffffff?text=VaultZero", use_container_width=True)
     
@@ -108,6 +264,77 @@ with st.sidebar:
     ✅ Downloadable reports  
     ✅ 100% secure & private  
     """)
+
+# FLOATING CHAT BUBBLE - Bottom right corner
+st.markdown("""
+    <div class="floating-chat-bubble" id="chat-bubble">
+        <div class="icon">💬</div>
+        <div class="chat-badge">AI</div>
+    </div>
+""", unsafe_allow_html=True)
+
+# Chat Dialog (opens when bubble is clicked)
+@st.dialog("💬 AI Assistant", width="large")
+def show_chat_dialog():
+    st.markdown("### Ask me about Zero Trust!")
+    
+    # Suggested questions based on context
+    if st.session_state.assessment_complete and st.session_state.results:
+        suggestions = [
+            ("💡", "Why did I get this score?"),
+            ("🎯", "What are my quick wins?"),
+            ("📊", "How do I compare to others?"),
+            ("🔍", "Explain my recommendations"),
+        ]
+    else:
+        suggestions = [
+            ("❓", "What is Zero Trust?"),
+            ("📝", "How should I score identity?"),
+            ("💡", "Give me examples for networks"),
+            ("🎯", "What's a good maturity score?"),
+        ]
+    
+    st.markdown("**Quick questions:**")
+    cols = st.columns(2)
+    for idx, (emoji, question) in enumerate(suggestions):
+        with cols[idx % 2]:
+            if st.button(f"{emoji} {question}", key=f"q_{idx}", use_container_width=True):
+                st.session_state.chat_messages.append({"role": "user", "content": question})
+                with st.spinner("🤔 Thinking..."):
+                    response = get_chat_response(question)
+                    st.session_state.chat_messages.append({"role": "assistant", "content": response})
+                st.rerun()
+    
+    st.markdown("---")
+    
+    # Chat history
+    if st.session_state.chat_messages:
+        chat_container = st.container(height=400)
+        with chat_container:
+            for message in st.session_state.chat_messages:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+    else:
+        st.info("👋 Hi! I'm your Zero Trust AI assistant. Ask me anything!")
+    
+    # Chat input
+    if prompt := st.chat_input("Type your question here...", key="chat_input_dialog"):
+        st.session_state.chat_messages.append({"role": "user", "content": prompt})
+        with st.spinner("🤔 Thinking..."):
+            response = get_chat_response(prompt)
+            st.session_state.chat_messages.append({"role": "assistant", "content": response})
+        st.rerun()
+    
+    # Clear button
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        if st.button("🗑️ Clear", use_container_width=True):
+            st.session_state.chat_messages = []
+            st.rerun()
+
+# Trigger for opening chat
+if st.button("💬", key="open_chat_fab", help="Open AI Assistant", type="primary"):
+    show_chat_dialog()
 
 # Main content
 if not st.session_state.assessment_complete:
