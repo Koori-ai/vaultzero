@@ -626,6 +626,6 @@ st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666;'>
     <p>🔒 <strong>VaultZero</strong> | AI-Powered Zero Trust Assessment Platform</p>
-    <p>Built with Claude Sonnet 4, LangGraph, and RAG | <a href="https://huggingface.co/datasets/Reply2susi/zero-trust-maturity-assessments" target="_blank">Dataset on Hugging Face</a></p>
+    <p>Built with LangGraph, and RAG | <a href="https://huggingface.co/datasets/Reply2susi/zero-trust-maturity-assessments" target="_blank">Dataset on Hugging Face</a></p>
 </div>
 """, unsafe_allow_html=True)
