@@ -60,25 +60,6 @@ st.markdown("""
         border-radius: 0.5rem;
         margin: 1rem 0;
     }
-    
-    /* AI Assistant Button Styling */
-    div[data-testid="stButton"] button[key="open_chat_fab"] {
-        background: linear-gradient(135deg, #FF6B35 0%, #1f77b4 100%) !important;
-        font-size: 1.5rem !important;
-        padding: 1rem 2rem !important;
-        border-radius: 50px !important;
-        box-shadow: 0 8px 24px rgba(31, 119, 180, 0.4) !important;
-        animation: pulse 2s infinite;
-    }
-    
-    @keyframes pulse {
-        0%, 100% {
-            box-shadow: 0 8px 24px rgba(31, 119, 180, 0.4);
-        }
-        50% {
-            box-shadow: 0 8px 36px rgba(31, 119, 180, 0.7);
-        }
-    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -181,8 +162,8 @@ if 'results' not in st.session_state:
     st.session_state.results = None
 if 'chat_messages' not in st.session_state:
     st.session_state.chat_messages = []
-if 'chat_open' not in st.session_state:
-    st.session_state.chat_open = False
+if 'show_chat' not in st.session_state:
+    st.session_state.show_chat = False
 
 # Header
 st.markdown('<div class="main-header">🔒 VaultZero</div>', unsafe_allow_html=True)
@@ -191,6 +172,13 @@ st.markdown('<div class="sub-header">AI-Powered Zero Trust Maturity Assessment</
 # Sidebar
 with st.sidebar:
     st.image("https://via.placeholder.com/300x100/1f77b4/ffffff?text=VaultZero", use_container_width=True)
+    
+    # AI ASSISTANT BUTTON - TOP OF SIDEBAR
+    st.markdown("---")
+    if st.button("💬 AI Assistant", key="sidebar_chat", use_container_width=True, type="primary"):
+        st.session_state.show_chat = True
+        st.rerun()
+    st.markdown("---")
     
     st.markdown("### 🎯 How It Works")
     st.markdown("""
@@ -225,64 +213,72 @@ with st.sidebar:
     ✅ 100% secure & private  
     """)
 
-# Chat Dialog
-@st.dialog("💬 AI Assistant", width="large")
-def show_chat_dialog():
-    st.markdown("### Ask me about Zero Trust!")
-    
-    # Suggested questions based on context
-    if st.session_state.assessment_complete and st.session_state.results:
-        suggestions = [
-            ("💡", "Why did I get this score?"),
-            ("🎯", "What are my quick wins?"),
-            ("📊", "How do I compare to others?"),
-            ("🔍", "Explain my recommendations"),
-        ]
-    else:
-        suggestions = [
-            ("❓", "What is Zero Trust?"),
-            ("📝", "How should I score identity?"),
-            ("💡", "Give me examples for networks"),
-            ("🎯", "What's a good maturity score?"),
-        ]
-    
-    st.markdown("**Quick questions:**")
-    cols = st.columns(2)
-    for idx, (emoji, question) in enumerate(suggestions):
-        with cols[idx % 2]:
-            if st.button(f"{emoji} {question}", key=f"q_{idx}", use_container_width=True):
-                st.session_state.chat_messages.append({"role": "user", "content": question})
-                with st.spinner("🤔 Thinking..."):
-                    response = get_chat_response(question)
-                    st.session_state.chat_messages.append({"role": "assistant", "content": response})
+# Chat Dialog - FIXED to not close on interaction
+if st.session_state.show_chat:
+    @st.dialog("💬 AI Assistant", width="large")
+    def show_chat_dialog():
+        st.markdown("### Ask me about Zero Trust!")
+        
+        # Suggested questions based on context
+        if st.session_state.assessment_complete and st.session_state.results:
+            suggestions = [
+                ("💡", "Why did I get this score?"),
+                ("🎯", "What are my quick wins?"),
+                ("📊", "How do I compare to others?"),
+                ("🔍", "Explain my recommendations"),
+            ]
+        else:
+            suggestions = [
+                ("❓", "What is Zero Trust?"),
+                ("📝", "How should I score identity?"),
+                ("💡", "Give me examples for networks"),
+                ("🎯", "What's a good maturity score?"),
+            ]
+        
+        st.markdown("**Quick questions:**")
+        cols = st.columns(2)
+        for idx, (emoji, question) in enumerate(suggestions):
+            with cols[idx % 2]:
+                if st.button(f"{emoji} {question}", key=f"q_{idx}", use_container_width=True):
+                    # Add user message
+                    st.session_state.chat_messages.append({"role": "user", "content": question})
+                    # Get and add response
+                    with st.spinner("🤔 Thinking..."):
+                        response = get_chat_response(question)
+                        st.session_state.chat_messages.append({"role": "assistant", "content": response})
+        
+        st.markdown("---")
+        
+        # Chat history
+        if st.session_state.chat_messages:
+            chat_container = st.container(height=400)
+            with chat_container:
+                for message in st.session_state.chat_messages:
+                    with st.chat_message(message["role"]):
+                        st.markdown(message["content"])
+        else:
+            st.info("👋 Hi! I'm your Zero Trust AI assistant. Ask me anything!")
+        
+        # Chat input
+        if prompt := st.chat_input("Type your question here...", key="chat_input_dialog"):
+            # Add user message
+            st.session_state.chat_messages.append({"role": "user", "content": prompt})
+            # Get and add response
+            with st.spinner("🤔 Thinking..."):
+                response = get_chat_response(prompt)
+                st.session_state.chat_messages.append({"role": "assistant", "content": response})
+        
+        # Bottom buttons
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("🗑️ Clear Chat", use_container_width=True):
+                st.session_state.chat_messages = []
+        with col2:
+            if st.button("✖️ Close", use_container_width=True):
+                st.session_state.show_chat = False
                 st.rerun()
     
-    st.markdown("---")
-    
-    # Chat history
-    if st.session_state.chat_messages:
-        chat_container = st.container(height=400)
-        with chat_container:
-            for message in st.session_state.chat_messages:
-                with st.chat_message(message["role"]):
-                    st.markdown(message["content"])
-    else:
-        st.info("👋 Hi! I'm your Zero Trust AI assistant. Ask me anything!")
-    
-    # Chat input
-    if prompt := st.chat_input("Type your question here...", key="chat_input_dialog"):
-        st.session_state.chat_messages.append({"role": "user", "content": prompt})
-        with st.spinner("🤔 Thinking..."):
-            response = get_chat_response(prompt)
-            st.session_state.chat_messages.append({"role": "assistant", "content": response})
-        st.rerun()
-    
-    # Clear button
-    col1, col2 = st.columns([3, 1])
-    with col2:
-        if st.button("🗑️ Clear", use_container_width=True):
-            st.session_state.chat_messages = []
-            st.rerun()
+    show_chat_dialog()
 
 # Main content
 if not st.session_state.assessment_complete:
@@ -595,17 +591,10 @@ else:
         st.session_state.results = None
         st.rerun()
 
-# Footer with AI Assistant Button
+# Footer
 st.markdown("---")
-
-# AI Assistant button - centered at bottom
-col1, col2, col3 = st.columns([2, 1, 2])
-with col2:
-    if st.button("💬 Ask AI Assistant", key="open_chat_fab", use_container_width=True, type="primary"):
-        show_chat_dialog()
-
 st.markdown("""
-<div style='text-align: center; color: #666; margin-top: 1rem;'>
+<div style='text-align: center; color: #666;'>
     <p>🔒 <strong>VaultZero</strong> | AI-Powered Zero Trust Assessment Platform</p>
     <p>Built with Claude Sonnet 4, LangGraph, and RAG | <a href="https://huggingface.co/datasets/Reply2susi/zero-trust-maturity-assessments" target="_blank">Dataset on Hugging Face</a></p>
 </div>
