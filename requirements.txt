@@ -16,3 +16,4 @@ streamlit
 # Utilities
 python-dotenv
 pandas
+langchain-community
