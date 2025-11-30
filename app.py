@@ -213,7 +213,7 @@ with st.sidebar:
     ✅ 100% secure & private  
     """)
 
-# Chat Dialog - FULLY FIXED VERSION
+# Chat Dialog - ENHANCED WITH SPINNER & BETTER LAYOUT
 if st.session_state.show_chat:
     @st.dialog("💬 AI Assistant", width="large")
     def show_chat_dialog():
@@ -235,23 +235,52 @@ if st.session_state.show_chat:
                 ("🎯", "What's a good maturity score?"),
             ]
         
+        # COMPACT Quick question buttons - 2x2 grid
         st.markdown("**Quick questions:**")
-        cols = st.columns(2)
-        for idx, (emoji, question) in enumerate(suggestions):
-            with cols[idx % 2]:
-                if st.button(f"{emoji} {question}", key=f"q_{idx}", use_container_width=True):
-                    # Process question immediately
-                    if not st.session_state.chat_messages or st.session_state.chat_messages[-1]["content"] != question:
-                        st.session_state.chat_messages.append({"role": "user", "content": question})
-                        response = get_chat_response(question)
+        
+        # First row
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button(suggestions[0][0] + " " + suggestions[0][1], key=f"q_0", use_container_width=True):
+                if not st.session_state.chat_messages or st.session_state.chat_messages[-1]["content"] != suggestions[0][1]:
+                    st.session_state.chat_messages.append({"role": "user", "content": suggestions[0][1]})
+                    with st.spinner("🤔 Thinking..."):
+                        response = get_chat_response(suggestions[0][1])
                         st.session_state.chat_messages.append({"role": "assistant", "content": response})
-                        st.rerun()
+                    st.rerun()
+        with col2:
+            if st.button(suggestions[1][0] + " " + suggestions[1][1], key=f"q_1", use_container_width=True):
+                if not st.session_state.chat_messages or st.session_state.chat_messages[-1]["content"] != suggestions[1][1]:
+                    st.session_state.chat_messages.append({"role": "user", "content": suggestions[1][1]})
+                    with st.spinner("🤔 Thinking..."):
+                        response = get_chat_response(suggestions[1][1])
+                        st.session_state.chat_messages.append({"role": "assistant", "content": response})
+                    st.rerun()
+        
+        # Second row
+        col3, col4 = st.columns(2)
+        with col3:
+            if st.button(suggestions[2][0] + " " + suggestions[2][1], key=f"q_2", use_container_width=True):
+                if not st.session_state.chat_messages or st.session_state.chat_messages[-1]["content"] != suggestions[2][1]:
+                    st.session_state.chat_messages.append({"role": "user", "content": suggestions[2][1]})
+                    with st.spinner("🤔 Thinking..."):
+                        response = get_chat_response(suggestions[2][1])
+                        st.session_state.chat_messages.append({"role": "assistant", "content": response})
+                    st.rerun()
+        with col4:
+            if st.button(suggestions[3][0] + " " + suggestions[3][1], key=f"q_3", use_container_width=True):
+                if not st.session_state.chat_messages or st.session_state.chat_messages[-1]["content"] != suggestions[3][1]:
+                    st.session_state.chat_messages.append({"role": "user", "content": suggestions[3][1]})
+                    with st.spinner("🤔 Thinking..."):
+                        response = get_chat_response(suggestions[3][1])
+                        st.session_state.chat_messages.append({"role": "assistant", "content": response})
+                    st.rerun()
         
         st.markdown("---")
         
-        # Chat history display
+        # Chat history display - OPTIMIZED HEIGHT
         if st.session_state.chat_messages:
-            chat_container = st.container(height=400)
+            chat_container = st.container(height=350)
             with chat_container:
                 for message in st.session_state.chat_messages:
                     with st.chat_message(message["role"]):
@@ -259,16 +288,16 @@ if st.session_state.show_chat:
         else:
             st.info("👋 Hi! I'm your Zero Trust AI assistant. Ask me anything!")
         
-        # Chat input - FIXED
+        # Chat input with spinner
         user_input = st.chat_input("Type your question here...", key="chat_input_dialog")
         if user_input:
-            # Process user input
             st.session_state.chat_messages.append({"role": "user", "content": user_input})
-            response = get_chat_response(user_input)
-            st.session_state.chat_messages.append({"role": "assistant", "content": response})
+            with st.spinner("🤔 Thinking..."):
+                response = get_chat_response(user_input)
+                st.session_state.chat_messages.append({"role": "assistant", "content": response})
             st.rerun()
         
-        # Bottom buttons - FIXED
+        # Bottom buttons
         col1, col2 = st.columns([1, 1])
         with col1:
             if st.button("🗑️ Clear Chat", key="clear_btn", use_container_width=True):
