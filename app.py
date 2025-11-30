@@ -17,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling + FLOATING CHAT BUBBLE
+# Custom CSS for better styling
 st.markdown("""
     <style>
     .main-header {
@@ -61,63 +61,23 @@ st.markdown("""
         margin: 1rem 0;
     }
     
-    /* FLOATING CHAT BUBBLE */
-    .floating-chat-bubble {
-        position: fixed;
-        bottom: 30px;
-        right: 30px;
-        width: 70px;
-        height: 70px;
-        background: linear-gradient(135deg, #FF6B35 0%, #1f77b4 100%);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        box-shadow: 0 8px 24px rgba(255, 107, 53, 0.4);
-        z-index: 9999;
+    /* AI Assistant Button Styling */
+    div[data-testid="stButton"] button[key="open_chat_fab"] {
+        background: linear-gradient(135deg, #FF6B35 0%, #1f77b4 100%) !important;
+        font-size: 1.5rem !important;
+        padding: 1rem 2rem !important;
+        border-radius: 50px !important;
+        box-shadow: 0 8px 24px rgba(31, 119, 180, 0.4) !important;
         animation: pulse 2s infinite;
-        border: 3px solid white;
-    }
-    
-    .floating-chat-bubble:hover {
-        transform: scale(1.1);
-        box-shadow: 0 12px 32px rgba(255, 107, 53, 0.6);
-    }
-    
-    .floating-chat-bubble .icon {
-        font-size: 32px;
-        color: white;
     }
     
     @keyframes pulse {
-        0% {
-            box-shadow: 0 8px 24px rgba(255, 107, 53, 0.4);
+        0%, 100% {
+            box-shadow: 0 8px 24px rgba(31, 119, 180, 0.4);
         }
         50% {
-            box-shadow: 0 8px 36px rgba(255, 107, 53, 0.7);
+            box-shadow: 0 8px 36px rgba(31, 119, 180, 0.7);
         }
-        100% {
-            box-shadow: 0 8px 24px rgba(255, 107, 53, 0.4);
-        }
-    }
-    
-    /* Chat badge */
-    .chat-badge {
-        position: absolute;
-        top: -5px;
-        right: -5px;
-        background: #28a745;
-        color: white;
-        border-radius: 50%;
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        font-weight: bold;
-        border: 2px solid white;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -228,7 +188,7 @@ if 'chat_open' not in st.session_state:
 st.markdown('<div class="main-header">🔒 VaultZero</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-header">AI-Powered Zero Trust Maturity Assessment</div>', unsafe_allow_html=True)
 
-# Sidebar (CLEAN - NO CHATBOT)
+# Sidebar
 with st.sidebar:
     st.image("https://via.placeholder.com/300x100/1f77b4/ffffff?text=VaultZero", use_container_width=True)
     
@@ -265,15 +225,7 @@ with st.sidebar:
     ✅ 100% secure & private  
     """)
 
-# FLOATING CHAT BUBBLE - Bottom right corner
-st.markdown("""
-    <div class="floating-chat-bubble" id="chat-bubble">
-        <div class="icon">💬</div>
-        <div class="chat-badge">AI</div>
-    </div>
-""", unsafe_allow_html=True)
-
-# Chat Dialog (opens when bubble is clicked)
+# Chat Dialog
 @st.dialog("💬 AI Assistant", width="large")
 def show_chat_dialog():
     st.markdown("### Ask me about Zero Trust!")
@@ -331,10 +283,6 @@ def show_chat_dialog():
         if st.button("🗑️ Clear", use_container_width=True):
             st.session_state.chat_messages = []
             st.rerun()
-
-# Trigger for opening chat
-if st.button("💬", key="open_chat_fab", help="Open AI Assistant", type="primary"):
-    show_chat_dialog()
 
 # Main content
 if not st.session_state.assessment_complete:
@@ -647,10 +595,17 @@ else:
         st.session_state.results = None
         st.rerun()
 
-# Footer
+# Footer with AI Assistant Button
 st.markdown("---")
+
+# AI Assistant button - centered at bottom
+col1, col2, col3 = st.columns([2, 1, 2])
+with col2:
+    if st.button("💬 Ask AI Assistant", key="open_chat_fab", use_container_width=True, type="primary"):
+        show_chat_dialog()
+
 st.markdown("""
-<div style='text-align: center; color: #666;'>
+<div style='text-align: center; color: #666; margin-top: 1rem;'>
     <p>🔒 <strong>VaultZero</strong> | AI-Powered Zero Trust Assessment Platform</p>
     <p>Built with Claude Sonnet 4, LangGraph, and RAG | <a href="https://huggingface.co/datasets/Reply2susi/zero-trust-maturity-assessments" target="_blank">Dataset on Hugging Face</a></p>
 </div>
