@@ -1,0 +1,424 @@
+{
+  "system_description": "Cloud-based enterprise SaaS application with customer data",
+  "assessment": {
+    "system_name": "Cloud-Based Enterprise SaaS Application",
+    "pillars": {
+      "identity": {
+        "score": 2.0,
+        "maturity_level": "ADVANCED",
+        "findings": "Strong foundation with SSO and MFA enforcement demonstrates solid identity security posture. Regular quarterly RBAC reviews show governance maturity, but implementation lacks advanced identity verification and risk-based authentication capabilities.",
+        "gaps": [
+          "No risk-based or adaptive authentication",
+          "Missing privileged access management (PAM)",
+          "No identity governance automation"
+        ],
+        "strengths": [
+          "MFA universally enforced",
+          "Regular access reviews implemented"
+        ]
+      },
+      "devices": {
+        "score": 1.5,
+        "maturity_level": "INITIAL",
+        "findings": "Corporate device management with EDR shows good endpoint security for managed devices. However, BYOD approach for contractors creates security gaps and inconsistent device trust verification across the organization.",
+        "gaps": [
+          "Inconsistent device trust policies between corporate and BYOD",
+          "No device compliance scoring",
+          "Limited device behavior analytics"
+        ],
+        "strengths": [
+          "EDR deployed on corporate devices",
+          "MDM coverage for contractor devices"
+        ]
+      },
+      "networks": {
+        "score": 1.5,
+        "maturity_level": "INITIAL",
+        "findings": "Cloud security groups provide basic network controls and partial segmentation shows progress toward micro-segmentation. However, incomplete network segmentation and lack of comprehensive network monitoring limit Zero Trust network capabilities.",
+        "gaps": [
+          "Incomplete micro-segmentation",
+          "No network behavior analytics",
+          "Missing encrypted internal communications"
+        ],
+        "strengths": [
+          "Cloud-native security groups implemented",
+          "Basic network segmentation in place"
+        ]
+      },
+      "applications": {
+        "score": 2.0,
+        "maturity_level": "ADVANCED",
+        "findings": "Integration of security testing in CI/CD pipeline demonstrates mature secure development practices. Application monitoring and logging provide visibility, but runtime application security and API protection may need enhancement.",
+        "gaps": [
+          "No runtime application self-protection (RASP)",
+          "Missing API security gateway",
+          "Limited application behavior analytics"
+        ],
+        "strengths": [
+          "Security integrated into development lifecycle",
+          "Comprehensive application logging implemented"
+        ]
+      },
+      "data": {
+        "score": 1.5,
+        "maturity_level": "INITIAL",
+        "findings": "Data classification framework provides foundation for data governance with encryption at rest ensuring basic data protection. Partial encryption in-transit represents significant security gap for sensitive customer data.",
+        "gaps": [
+          "Incomplete encryption in-transit",
+          "No data loss prevention (DLP)",
+          "Missing data usage monitoring and analytics"
+        ],
+        "strengths": [
+          "Established data classification framework",
+          "Encryption at rest implemented"
+        ]
+      }
+    },
+    "overall_score": 1.7,
+    "overall_maturity_level": "INITIAL",
+    "key_gaps": [
+      "Incomplete encryption in-transit for customer data",
+      "Inconsistent device trust policies between corporate and BYOD environments",
+      "Missing risk-based authentication and adaptive access controls",
+      "Incomplete network micro-segmentation",
+      "Lack of comprehensive behavioral analytics across all pillars"
+    ],
+    "quick_wins": [
+      "Implement full encryption in-transit for all customer data flows",
+      "Deploy network behavior monitoring tools for anomaly detection",
+      "Establish unified device compliance policies for both corporate and BYOD",
+      "Add risk-based authentication factors to existing MFA system",
+      "Implement API security gateway for application protection"
+    ],
+    "strategic_recommendations": [
+      "Develop comprehensive Zero Trust architecture roadmap with micro-segmentation priorities",
+      "Implement AI-driven behavioral analytics across identity, device, and application pillars",
+      "Establish continuous compliance monitoring and automated policy enforcement",
+      "Deploy privileged access management (PAM) solution for administrative accounts",
+      "Create data loss prevention (DLP) program with real-time monitoring capabilities"
+    ]
+  },
+  "benchmark": {
+    "overall_percentile": 45,
+    "pillar_rankings": {
+      "identity": {
+        "percentile": 75,
+        "vs_peers": "above average"
+      },
+      "devices": {
+        "percentile": 35,
+        "vs_peers": "below average"
+      },
+      "networks": {
+        "percentile": 40,
+        "vs_peers": "below average"
+      },
+      "applications": {
+        "percentile": 70,
+        "vs_peers": "above average"
+      },
+      "data": {
+        "percentile": 30,
+        "vs_peers": "below average"
+      }
+    },
+    "strengths_vs_peers": [
+      "Universal MFA enforcement with quarterly RBAC reviews - most peers have inconsistent MFA adoption",
+      "Security-integrated CI/CD pipeline with comprehensive application logging - many peers still test security separately",
+      "Established data classification framework - peers often lack systematic data categorization",
+      "Cloud-native security groups implementation - peers frequently struggle with cloud-native controls"
+    ],
+    "gaps_vs_peers": [
+      "Incomplete encryption in-transit while most cloud SaaS peers have achieved full encryption",
+      "BYOD device trust inconsistencies - peers typically have unified device compliance policies",
+      "Missing network behavior analytics - standard capability among mature cloud SaaS providers",
+      "Lack of API security gateway - critical gap as peers face increasing API-targeted attacks",
+      "No data loss prevention (DLP) - most enterprise SaaS peers have implemented DLP for customer data protection"
+    ],
+    "peer_best_practices": [
+      {
+        "practice": "Risk-based authentication with device trust scoring",
+        "system": "Similar cloud SaaS providers",
+        "implementation": "Integrated device compliance scores into authentication decisions, automatically stepping up authentication for non-compliant devices"
+      },
+      {
+        "practice": "Automated micro-segmentation for multi-tenant environments",
+        "system": "Enterprise SaaS platforms",
+        "implementation": "Deployed software-defined perimeters that automatically create network boundaries per customer tenant with zero-config setup"
+      },
+      {
+        "practice": "Real-time DLP with customer data tagging",
+        "system": "Customer data handling platforms",
+        "implementation": "Implemented automated data discovery and classification with real-time monitoring of customer data movement across all system boundaries"
+      },
+      {
+        "practice": "Privileged access management for cloud-native environments",
+        "system": "Cloud-first enterprise applications",
+        "implementation": "Deployed just-in-time access for administrative functions with session recording and automated de-provisioning"
+      }
+    ],
+    "competitive_position": "Your system demonstrates strong identity and application security practices that exceed many peers, particularly in MFA enforcement and secure development integration. However, significant gaps in data protection, device management consistency, and network segmentation place you below the median for enterprise SaaS platforms handling customer data, creating competitive risk in security-conscious enterprise deals."
+  },
+  "roadmap": {
+    "executive_summary": "This 6-month Zero Trust roadmap prioritizes closing critical data protection and device management gaps that place us below peer average, while building on our strong identity and application security foundation. The strategy focuses on immediate encryption and DLP implementation, unified device compliance, and network behavior analytics to achieve competitive parity and protect customer data.",
+    "quick_wins": [
+      {
+        "initiative": "Implement complete encryption in-transit for all customer data flows",
+        "timeline": "Weeks 1-4",
+        "effort": "Medium",
+        "impact": "High",
+        "cost_estimate": "$15,000 - $25,000",
+        "why_now": "Critical gap vs peers handling customer data - immediate compliance and competitive risk",
+        "success_metrics": [
+          "100% of customer data encrypted in-transit",
+          "Zero unencrypted customer data flows detected in monitoring"
+        ]
+      },
+      {
+        "initiative": "Deploy unified device compliance policies for corporate and BYOD environments",
+        "timeline": "Weeks 2-6",
+        "effort": "Medium",
+        "impact": "High",
+        "cost_estimate": "$20,000 - $35,000",
+        "why_now": "Inconsistent device trust creates security gap and complicates incident response",
+        "success_metrics": [
+          "Single compliance policy applied to 100% of devices",
+          "Device compliance scores integrated into access decisions"
+        ]
+      },
+      {
+        "initiative": "Implement network behavior analytics for anomaly detection",
+        "timeline": "Weeks 3-8",
+        "effort": "Medium",
+        "impact": "Medium",
+        "cost_estimate": "$25,000 - $40,000",
+        "why_now": "Standard capability among peers - essential for detecting lateral movement",
+        "success_metrics": [
+          "Network behavioral baselines established",
+          "Anomaly detection alerts configured with <5% false positive rate"
+        ]
+      }
+    ],
+    "medium_term": [
+      {
+        "initiative": "Deploy comprehensive Data Loss Prevention (DLP) with real-time customer data monitoring",
+        "timeline": "Months 2-3",
+        "effort": "High",
+        "impact": "High",
+        "cost_estimate": "$75,000 - $120,000",
+        "dependencies": [
+          "Complete encryption in-transit",
+          "Data classification framework enhancement"
+        ],
+        "success_metrics": [
+          "100% of customer data flows monitored by DLP",
+          "Real-time policy enforcement with automated blocking of unauthorized transfers"
+        ]
+      },
+      {
+        "initiative": "Implement API security gateway with comprehensive protection",
+        "timeline": "Months 2-4",
+        "effort": "High",
+        "impact": "High",
+        "cost_estimate": "$50,000 - $80,000",
+        "dependencies": [
+          "Application security assessment completion"
+        ],
+        "success_metrics": [
+          "100% of APIs protected by security gateway",
+          "API threat detection and automated rate limiting active"
+        ]
+      },
+      {
+        "initiative": "Deploy risk-based authentication with adaptive access controls",
+        "timeline": "Months 3-4",
+        "effort": "Medium",
+        "impact": "High",
+        "cost_estimate": "$40,000 - $60,000",
+        "dependencies": [
+          "Unified device compliance policies",
+          "Network behavior analytics"
+        ],
+        "success_metrics": [
+          "Risk scoring implemented for 100% of authentication events",
+          "Adaptive authentication reducing user friction by 30% while maintaining security"
+        ]
+      }
+    ],
+    "long_term": [
+      {
+        "initiative": "Implement automated micro-segmentation for multi-tenant environment",
+        "timeline": "Months 4-6",
+        "effort": "High",
+        "impact": "High",
+        "cost_estimate": "$80,000 - $130,000",
+        "dependencies": [
+          "Network behavior analytics",
+          "Complete network topology mapping"
+        ],
+        "success_metrics": [
+          "Automated per-tenant network segmentation deployed",
+          "Zero cross-tenant network communication detected"
+        ]
+      },
+      {
+        "initiative": "Deploy Privileged Access Management (PAM) for cloud-native environment",
+        "timeline": "Months 5-6",
+        "effort": "High",
+        "impact": "Medium",
+        "cost_estimate": "$60,000 - $90,000",
+        "dependencies": [
+          "Risk-based authentication",
+          "Identity governance automation"
+        ],
+        "success_metrics": [
+          "100% of privileged access through PAM with JIT provisioning",
+          "All privileged sessions recorded and monitored"
+        ]
+      },
+      {
+        "initiative": "Implement comprehensive behavioral analytics across all Zero Trust pillars",
+        "timeline": "Months 5-6",
+        "effort": "High",
+        "impact": "High",
+        "cost_estimate": "$70,000 - $110,000",
+        "dependencies": [
+          "Network behavior analytics",
+          "DLP implementation",
+          "Device compliance unification"
+        ],
+        "success_metrics": [
+          "Integrated behavioral analytics across identity, device, network, and data pillars",
+          "AI-driven threat detection with correlation across all security domains"
+        ]
+      }
+    ],
+    "month_by_month": {
+      "month_1": {
+        "focus": "Critical Data Protection and Device Unification",
+        "initiatives": [
+          "Complete encryption in-transit implementation",
+          "Begin unified device compliance deployment"
+        ],
+        "milestones": [
+          "All customer data flows encrypted",
+          "Device compliance policy design completed"
+        ]
+      },
+      "month_2": {
+        "focus": "Network Visibility and DLP Foundation",
+        "initiatives": [
+          "Deploy network behavior analytics",
+          "Begin DLP implementation",
+          "Complete device compliance rollout"
+        ],
+        "milestones": [
+          "Network behavioral baselines established",
+          "Unified device policies active",
+          "DLP pilot deployment"
+        ]
+      },
+      "month_3": {
+        "focus": "DLP Deployment and API Security",
+        "initiatives": [
+          "Complete DLP rollout",
+          "Begin API security gateway implementation"
+        ],
+        "milestones": [
+          "Real-time DLP monitoring active",
+          "API security gateway pilot"
+        ]
+      },
+      "month_4": {
+        "focus": "Advanced Authentication and API Protection",
+        "initiatives": [
+          "Deploy risk-based authentication",
+          "Complete API security gateway",
+          "Begin micro-segmentation planning"
+        ],
+        "milestones": [
+          "Adaptive authentication active",
+          "All APIs protected",
+          "Micro-segmentation architecture defined"
+        ]
+      },
+      "month_5": {
+        "focus": "Micro-segmentation and PAM Implementation",
+        "initiatives": [
+          "Deploy automated micro-segmentation",
+          "Begin PAM implementation",
+          "Start comprehensive behavioral analytics"
+        ],
+        "milestones": [
+          "Per-tenant network isolation active",
+          "PAM pilot for critical systems"
+        ]
+      },
+      "month_6": {
+        "focus": "Complete Zero Trust Integration",
+        "initiatives": [
+          "Complete PAM deployment",
+          "Finalize behavioral analytics integration",
+          "Comprehensive testing and optimization"
+        ],
+        "milestones": [
+          "Full PAM coverage",
+          "Integrated behavioral analytics operational",
+          "Zero Trust maturity assessment"
+        ]
+      }
+    },
+    "total_cost_estimate": {
+      "minimum": "$435,000",
+      "maximum": "$680,000",
+      "breakdown": {
+        "identity": "$55,000 - $85,000",
+        "devices": "$20,000 - $35,000",
+        "networks": "$105,000 - $170,000",
+        "applications": "$50,000 - $80,000",
+        "data": "$75,000 - $120,000",
+        "integration_and_analytics": "$130,000 - $190,000"
+      }
+    },
+    "risk_mitigation": [
+      {
+        "risk": "Customer data exposure during encryption implementation",
+        "mitigation": "Implement phased rollout with continuous monitoring and immediate rollback capability",
+        "owner": "Data Security Team Lead"
+      },
+      {
+        "risk": "Business disruption from device compliance enforcement",
+        "mitigation": "Gradual enforcement with grace periods and user communication campaign",
+        "owner": "IT Operations Manager"
+      },
+      {
+        "risk": "API gateway performance impact on customer experience",
+        "mitigation": "Performance testing in staging, canary deployment, and SLA monitoring",
+        "owner": "Application Security Team"
+      },
+      {
+        "risk": "Micro-segmentation breaking existing integrations",
+        "mitigation": "Comprehensive application mapping before implementation and extensive testing",
+        "owner": "Network Security Architect"
+      }
+    ],
+    "expected_outcomes": {
+      "6_month_maturity_target": "ADVANCED (Overall Score: 2.3+)",
+      "pillar_improvements": {
+        "identity": "ADVANCED (2.0) -> OPTIMIZING (2.5)",
+        "devices": "INITIAL (1.5) -> ADVANCED (2.2)",
+        "networks": "INITIAL (1.5) -> ADVANCED (2.1)",
+        "applications": "ADVANCED (2.0) -> OPTIMIZING (2.4)",
+        "data": "INITIAL (1.5) -> ADVANCED (2.3)"
+      },
+      "percentile_improvement": "45th percentile -> 75th+ percentile vs enterprise SaaS peers"
+    }
+  },
+  "summary": {
+    "current_maturity": "INITIAL",
+    "current_score": 1.7,
+    "peer_percentile": 45,
+    "target_maturity": "ADVANCED (Overall Score: 2.3+)",
+    "investment_range": "$435,000 - $680,000"
+  }
+}

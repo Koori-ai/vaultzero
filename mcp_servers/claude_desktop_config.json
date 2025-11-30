@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "vaultzero-benchmark": {
+      "command": "python",
+      "args": [
+        "C:\\\\projects\\\\vaultzero\\\\mcp_servers\\\\benchmark_server.py"
+      ],
+      "env": {
+        "PYTHONPATH": "C:\\\\projects\\\\vaultzero"
+      }
+    }
+  }
+}
