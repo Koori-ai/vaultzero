@@ -213,7 +213,7 @@ with st.sidebar:
     ✅ 100% secure & private  
     """)
 
-# Chat Dialog - FIXED to not close on interaction
+# Chat Dialog - FULLY FIXED VERSION
 if st.session_state.show_chat:
     @st.dialog("💬 AI Assistant", width="large")
     def show_chat_dialog():
@@ -240,16 +240,16 @@ if st.session_state.show_chat:
         for idx, (emoji, question) in enumerate(suggestions):
             with cols[idx % 2]:
                 if st.button(f"{emoji} {question}", key=f"q_{idx}", use_container_width=True):
-                    # Add user message
-                    st.session_state.chat_messages.append({"role": "user", "content": question})
-                    # Get and add response
-                    with st.spinner("🤔 Thinking..."):
+                    # Process question immediately
+                    if not st.session_state.chat_messages or st.session_state.chat_messages[-1]["content"] != question:
+                        st.session_state.chat_messages.append({"role": "user", "content": question})
                         response = get_chat_response(question)
                         st.session_state.chat_messages.append({"role": "assistant", "content": response})
+                        st.rerun()
         
         st.markdown("---")
         
-        # Chat history
+        # Chat history display
         if st.session_state.chat_messages:
             chat_container = st.container(height=400)
             with chat_container:
@@ -259,22 +259,23 @@ if st.session_state.show_chat:
         else:
             st.info("👋 Hi! I'm your Zero Trust AI assistant. Ask me anything!")
         
-        # Chat input
-        if prompt := st.chat_input("Type your question here...", key="chat_input_dialog"):
-            # Add user message
-            st.session_state.chat_messages.append({"role": "user", "content": prompt})
-            # Get and add response
-            with st.spinner("🤔 Thinking..."):
-                response = get_chat_response(prompt)
-                st.session_state.chat_messages.append({"role": "assistant", "content": response})
+        # Chat input - FIXED
+        user_input = st.chat_input("Type your question here...", key="chat_input_dialog")
+        if user_input:
+            # Process user input
+            st.session_state.chat_messages.append({"role": "user", "content": user_input})
+            response = get_chat_response(user_input)
+            st.session_state.chat_messages.append({"role": "assistant", "content": response})
+            st.rerun()
         
-        # Bottom buttons
+        # Bottom buttons - FIXED
         col1, col2 = st.columns([1, 1])
         with col1:
-            if st.button("🗑️ Clear Chat", use_container_width=True):
+            if st.button("🗑️ Clear Chat", key="clear_btn", use_container_width=True):
                 st.session_state.chat_messages = []
+                st.rerun()
         with col2:
-            if st.button("✖️ Close", use_container_width=True):
+            if st.button("✖️ Close", key="close_btn", use_container_width=True):
                 st.session_state.show_chat = False
                 st.rerun()
     
