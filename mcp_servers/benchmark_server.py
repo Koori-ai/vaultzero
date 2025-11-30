@@ -14,6 +14,10 @@ import os
 import sys
 from typing import Any
 
+# Configure UTF-8 encoding for Windows compatibility
+if sys.stdout:
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 # Add parent directory to path to import VaultZero modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -28,7 +32,7 @@ from mcp.types import (
 try:
     from rag_wrapper import VaultZeroRAGWrapper
 except ImportError:
-    print("Warning: Could not import VaultZeroRAGWrapper. Make sure rag_wrapper.py is accessible.")
+    print("Warning: Could not import VaultZeroRAGWrapper. Make sure rag_wrapper.py is accessible.", file=sys.stderr)
     VaultZeroRAGWrapper = None
 
 # Initialize MCP Server
@@ -36,6 +40,14 @@ app = Server("vaultzero-benchmark")
 
 # Initialize RAG system (will be done on first tool call)
 _rag_instance = None
+
+def clean_text(text: str) -> str:
+    """Remove problematic Unicode characters for Windows compatibility"""
+    if not isinstance(text, str):
+        return str(text)
+    # Replace common problematic characters
+    text = text.encode('ascii', errors='replace').decode('ascii')
+    return text
 
 def get_rag():
     """Lazy initialization of RAG wrapper"""
@@ -167,17 +179,19 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             # Query the vector database
             results = rag.search(query, k=top_k)
             
-            # Format results
-            response = f"# Zero Trust Benchmark Query Results\n\n"
-            response += f"**Query:** {query}\n\n"
-            response += f"**Top {len(results)} Similar Assessments:**\n\n"
+            # Format results with clean text
+            response = "Zero Trust Benchmark Query Results\n\n"
+            response += f"Query: {clean_text(query)}\n\n"
+            response += f"Top {len(results)} Similar Assessments:\n\n"
             
             for i, result in enumerate(results, 1):
-                response += f"## {i}. Assessment\n"
-                response += f"**Similarity Score:** {result.get('score', 'N/A')}\n"
-                response += f"**Content:**\n{result.get('content', 'No content available')}\n\n"
+                response += f"{i}. Assessment\n"
+                response += f"Similarity Score: {result.get('score', 'N/A')}\n"
+                content = clean_text(result.get('content', 'No content available'))
+                response += f"Content: {content}\n\n"
                 if 'metadata' in result:
-                    response += f"**Metadata:** {json.dumps(result['metadata'], indent=2)}\n\n"
+                    metadata_str = json.dumps(result['metadata'], indent=2)
+                    response += f"Metadata: {clean_text(metadata_str)}\n\n"
             
             return [TextContent(type="text", text=response)]
         
@@ -188,15 +202,15 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             # Get statistics from RAG system
             stats = rag.get_pillar_stats(pillar)
             
-            response = f"# {pillar.title()} Pillar Statistics\n\n"
-            response += f"**Average Score:** {stats.get('average', 'N/A')}\n"
-            response += f"**Median Score:** {stats.get('median', 'N/A')}\n"
-            response += f"**Standard Deviation:** {stats.get('std_dev', 'N/A')}\n"
-            response += f"**Range:** {stats.get('min', 'N/A')} - {stats.get('max', 'N/A')}\n\n"
+            response = f"{pillar.title()} Pillar Statistics\n\n"
+            response += f"Average Score: {stats.get('average', 'N/A')}\n"
+            response += f"Median Score: {stats.get('median', 'N/A')}\n"
+            response += f"Standard Deviation: {stats.get('std_dev', 'N/A')}\n"
+            response += f"Range: {stats.get('min', 'N/A')} - {stats.get('max', 'N/A')}\n\n"
             
             if score:
                 percentile = stats.get('percentile_for_score')(score)
-                response += f"\n**Your Score ({score}):** {percentile}th percentile\n"
+                response += f"\nYour Score ({score}): {percentile}th percentile\n"
             
             return [TextContent(type="text", text=response)]
         
@@ -207,15 +221,15 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             # Compare against benchmark
             comparison = rag.compare_to_peers(pillar_scores, system_type)
             
-            response = f"# Peer Comparison Analysis\n\n"
-            response += f"**System Type:** {system_type}\n\n"
-            response += f"## Overall Maturity\n"
-            response += f"**Score:** {comparison.get('overall_score', 'N/A')}/4.0\n"
-            response += f"**Percentile:** {comparison.get('overall_percentile', 'N/A')}th\n\n"
+            response = "Peer Comparison Analysis\n\n"
+            response += f"System Type: {system_type}\n\n"
+            response += "Overall Maturity\n"
+            response += f"Score: {comparison.get('overall_score', 'N/A')}/4.0\n"
+            response += f"Percentile: {comparison.get('overall_percentile', 'N/A')}th\n\n"
             
-            response += f"## Pillar-by-Pillar Rankings\n\n"
+            response += "Pillar-by-Pillar Rankings\n\n"
             for pillar, data in comparison.get('pillars', {}).items():
-                response += f"**{pillar.title()}:** {data.get('percentile', 'N/A')}th percentile "
+                response += f"{pillar.title()}: {data.get('percentile', 'N/A')}th percentile "
                 response += f"(Score: {data.get('score', 'N/A')}/4.0)\n"
             
             return [TextContent(type="text", text=response)]
@@ -224,10 +238,11 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             focus_area = arguments.get("focus_area", "general")
             
             insights = rag.get_insights(focus_area)
+            insights_clean = clean_text(insights)
             
-            response = f"# Zero Trust Benchmark Insights\n\n"
-            response += f"**Focus Area:** {focus_area}\n\n"
-            response += insights
+            response = "Zero Trust Benchmark Insights\n\n"
+            response += f"Focus Area: {focus_area}\n\n"
+            response += insights_clean
             
             return [TextContent(type="text", text=response)]
         
@@ -238,9 +253,10 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             )]
     
     except Exception as e:
+        error_msg = clean_text(str(e))
         return [TextContent(
             type="text",
-            text=f"Error executing tool '{name}': {str(e)}"
+            text=f"Error executing tool '{name}': {error_msg}"
         )]
 
 
@@ -282,15 +298,15 @@ async def read_resource(uri: str) -> str:
         }, indent=2)
     
     elif uri == "docs://vaultzero/methodology":
-        return """# VaultZero Assessment Methodology
+        return """VaultZero Assessment Methodology
 
-## Maturity Scale
-- **1.0 - Initial:** Ad-hoc processes
-- **2.0 - Traditional:** Basic security controls
-- **3.0 - Advanced:** Mature Zero Trust
-- **4.0 - Optimal:** Industry-leading
+Maturity Scale:
+- 1.0 - Initial: Ad-hoc processes
+- 2.0 - Traditional: Basic security controls
+- 3.0 - Advanced: Mature Zero Trust
+- 4.0 - Optimal: Industry-leading
 
-## Six Pillars
+Six Pillars:
 1. Identity
 2. Devices
 3. Networks
