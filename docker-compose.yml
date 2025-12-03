@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  vaultzero:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    
+    container_name: vaultzero-app
+    
+    ports:
+      - "8501:8501"
+    
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
+      - LANGFUSE_HOST=${LANGFUSE_HOST:-https://cloud.langfuse.com}
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+    
+    volumes:
+      - vaultzero-chroma-data:/app/data/chroma_db
+      - vaultzero-logs:/app/logs
+    
+    networks:
+      - vaultzero-network
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.streamlit
+    
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  vaultzero-chroma-data:
+    driver: local
+  vaultzero-logs:
+    driver: local
+
+networks:
+  vaultzero-network:
+    driver: bridge
