@@ -5,7 +5,7 @@ Coordinates Assessment → Benchmark → Recommendation workflow
 
 import os
 import json
-from typing import Dict, TypedDict
+from typing import Dict, TypedDict, Optional
 from dotenv import load_dotenv
 from langgraph.graph import StateGraph, END
 
@@ -30,19 +30,30 @@ class VaultZeroState(TypedDict):
 class VaultZeroOrchestrator:
     """Orchestrates the complete VaultZero assessment workflow"""
     
-    def __init__(self):
-        """Initialize all agents and build workflow"""
+    def __init__(self, rag_system=None):
+        """
+        Initialize all agents and build workflow
+        
+        Args:
+            rag_system: Optional VaultZeroRAG instance for peer benchmarking
+        """
         print("🔧 Initializing VaultZero Multi-Agent System...")
+        
+        # Store RAG system
+        self.rag_system = rag_system
         
         # Initialize agents
         self.assessment_agent = AssessmentAgent()
-        self.benchmark_agent = BenchmarkAgent()
+        self.benchmark_agent = BenchmarkAgent(rag_system=rag_system)
         self.recommendation_agent = RecommendationAgent()
         
         # Build workflow
         self.workflow = self._build_workflow()
         
-        print("✅ VaultZero system ready!")
+        if rag_system:
+            print("✅ VaultZero system ready with RAG-powered benchmarking!")
+        else:
+            print("⚠️  VaultZero system ready (running without RAG benchmarking)")
     
     def _build_workflow(self):
         """Build LangGraph workflow connecting all agents"""
@@ -83,6 +94,8 @@ class VaultZeroOrchestrator:
         """Step 2: Run benchmark agent"""
         print("\n" + "="*70)
         print("STEP 2/4: RUNNING BENCHMARK AGENT")
+        if self.rag_system:
+            print("📊 Using RAG-powered peer benchmarking...")
         print("="*70)
         
         results = self.benchmark_agent.run_benchmark(

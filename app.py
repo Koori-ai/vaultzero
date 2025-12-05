@@ -7,7 +7,22 @@ import streamlit as st
 import json
 from datetime import datetime
 from orchestrator import VaultZeroOrchestrator
+from rag.vectorstore import VaultZeroRAG
 import anthropic
+
+# Initialize RAG system with caching
+@st.cache_resource
+def initialize_rag():
+    """Initialize RAG system once and cache it"""
+    rag = VaultZeroRAG(
+        data_path="./data/zt_synthetic_dataset_complete.json",
+        persist_directory="./data/chroma_db"
+    )
+    rag.initialize()
+    return rag
+
+# Initialize RAG system
+rag = initialize_rag()
 
 # Page config
 st.set_page_config(
@@ -400,8 +415,8 @@ if not st.session_state.assessment_complete:
                 # Run assessment
                 with st.spinner("🤖 Running multi-agent assessment... This may take 60-90 seconds..."):
                     try:
-                        # Initialize orchestrator
-                        orchestrator = VaultZeroOrchestrator()
+                        # Initialize orchestrator with RAG system
+                        orchestrator = VaultZeroOrchestrator(rag_system=rag)
                         
                         # Run complete workflow
                         results = orchestrator.run(system_description, user_answers)
