@@ -25,9 +25,17 @@ class VaultZeroRAG:
         
         # Initialize embeddings (FREE - runs locally)
         print("🔄 Loading embedding model (this may take a minute first time)...")
+        
+        # Get HuggingFace token from environment
+        hf_token = os.getenv('HUGGINGFACE_TOKEN')
+        
+        # Initialize embeddings with token
         self.embeddings = HuggingFaceEmbeddings(
             model_name="all-MiniLM-L6-v2",
-            model_kwargs={'device': 'cpu'}
+            model_kwargs={
+                'device': 'cpu',
+                'use_auth_token': hf_token if hf_token else None
+            }
         )
         
         self.vectorstore = None
