@@ -5,18 +5,57 @@ Streamlit Web Interface
 
 import streamlit as st
 import json
+import os
 from datetime import datetime
 from orchestrator import VaultZeroOrchestrator
 from rag.vectorstore import VaultZeroRAG
+from huggingface_hub import hf_hub_download
 import anthropic
 
-# Initialize RAG system with caching
+# Initialize RAG system with caching and auto-download
 @st.cache_resource
 def initialize_rag():
-    """Initialize RAG system once and cache it"""
+    """Initialize RAG system once and cache it - downloads dataset if needed"""
+    
+    data_path = "./data/zt_synthetic_dataset_complete.json"
+    persist_directory = "./data/chroma_db"
+    
+    # Ensure data directory exists
+    os.makedirs("./data", exist_ok=True)
+    
+    # Download dataset from HuggingFace if not exists
+    if not os.path.exists(data_path):
+        print("📥 Downloading dataset from HuggingFace...")
+        try:
+            hf_hub_download(
+                repo_id="Reply2susi/zero-trust-maturity-assessments",
+                filename="zt_synthetic_dataset_complete.json",
+                repo_type="dataset",
+                local_dir="./data",
+                token=os.getenv('HUGGINGFACE_TOKEN')
+            )
+            print("✅ Dataset downloaded successfully!")
+        except Exception as e:
+            print(f"⚠️ Error downloading with token: {e}")
+            # Try without token (for public datasets)
+            try:
+                hf_hub_download(
+                    repo_id="Reply2susi/zero-trust-maturity-assessments",
+                    filename="zt_synthetic_dataset_complete.json",
+                    repo_type="dataset",
+                    local_dir="./data"
+                )
+                print("✅ Dataset downloaded successfully (without token)!")
+            except Exception as e2:
+                print(f"❌ Failed to download dataset: {e2}")
+                raise
+    else:
+        print("✅ Dataset file found locally")
+    
+    # Initialize RAG system
     rag = VaultZeroRAG(
-        data_path="./data/zt_synthetic_dataset_complete.json",
-        persist_directory="./data/chroma_db"
+        data_path=data_path,
+        persist_directory=persist_directory
     )
     rag.initialize()
     return rag

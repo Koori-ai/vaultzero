@@ -6,6 +6,7 @@ langchain-anthropic
 # Vector DB & Embeddings
 chromadb
 sentence-transformers
+huggingface-hub>=0.20.0
 
 # Observability
 langfuse
