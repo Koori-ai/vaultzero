@@ -14,7 +14,7 @@ from rag.vectorstore import VaultZeroRAG
 load_dotenv()
 
 class BenchmarkAgent:
-    def __init__(self):
+    def __init__(self, rag_system=None):
         """Initialize the Benchmark Agent with Claude API and RAG system"""
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
@@ -23,12 +23,18 @@ class BenchmarkAgent:
         self.client = Anthropic(api_key=api_key)
         self.model = "claude-sonnet-4-20250514"
         
-        # Initialize RAG with correct parameters
-        data_path = r"C:\projects\zt-assessment-generator\data\output\zt_synthetic_dataset_complete.json"
-        persist_dir = "./data/chroma_db"
-        
-        self.rag = VaultZeroRAG(data_path=data_path, persist_directory=persist_dir)
-        self.rag.load_existing_vectorstore()
+        # Use provided RAG system or create new one
+        if rag_system:
+            self.rag = rag_system
+            print("✅ Using provided RAG system")
+        else:
+            # Initialize RAG with correct parameters (for backward compatibility)
+            data_path = r"C:\projects\zt-assessment-generator\data\output\zt_synthetic_dataset_complete.json"
+            persist_dir = "./data/chroma_db"
+            
+            self.rag = VaultZeroRAG(data_path=data_path, persist_directory=persist_dir)
+            self.rag.load_existing_vectorstore()
+            print("✅ Created new RAG system")
         
     def find_similar_systems(self, system_description: str, top_k: int = 3):
         """Use RAG to find similar systems"""
