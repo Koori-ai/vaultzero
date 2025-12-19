@@ -289,46 +289,50 @@ if st.session_state.show_chat:
                 ("🎯", "What's a good maturity score?"),
             ]
         
-        # COMPACT Quick question buttons - 2x2 grid
+        # COMPACT Quick question buttons - 2x2 grid - FIXED: Clears chat before adding new Q&A
         st.markdown("**Quick questions:**")
         
         # First row
         col1, col2 = st.columns(2)
         with col1:
             if st.button(suggestions[0][0] + " " + suggestions[0][1], key=f"q_0", use_container_width=True):
-                if not st.session_state.chat_messages or st.session_state.chat_messages[-1]["content"] != suggestions[0][1]:
-                    st.session_state.chat_messages.append({"role": "user", "content": suggestions[0][1]})
-                    with st.spinner("🤔 Thinking..."):
-                        response = get_chat_response(suggestions[0][1])
-                        st.session_state.chat_messages.append({"role": "assistant", "content": response})
-                    st.rerun()
+                # FIXED: Clear chat so new answer appears at top
+                st.session_state.chat_messages = []
+                st.session_state.chat_messages.append({"role": "user", "content": suggestions[0][1]})
+                with st.spinner("🤔 Thinking..."):
+                    response = get_chat_response(suggestions[0][1])
+                    st.session_state.chat_messages.append({"role": "assistant", "content": response})
+                st.rerun()
         with col2:
             if st.button(suggestions[1][0] + " " + suggestions[1][1], key=f"q_1", use_container_width=True):
-                if not st.session_state.chat_messages or st.session_state.chat_messages[-1]["content"] != suggestions[1][1]:
-                    st.session_state.chat_messages.append({"role": "user", "content": suggestions[1][1]})
-                    with st.spinner("🤔 Thinking..."):
-                        response = get_chat_response(suggestions[1][1])
-                        st.session_state.chat_messages.append({"role": "assistant", "content": response})
-                    st.rerun()
+                # FIXED: Clear chat so new answer appears at top
+                st.session_state.chat_messages = []
+                st.session_state.chat_messages.append({"role": "user", "content": suggestions[1][1]})
+                with st.spinner("🤔 Thinking..."):
+                    response = get_chat_response(suggestions[1][1])
+                    st.session_state.chat_messages.append({"role": "assistant", "content": response})
+                st.rerun()
         
         # Second row
         col3, col4 = st.columns(2)
         with col3:
             if st.button(suggestions[2][0] + " " + suggestions[2][1], key=f"q_2", use_container_width=True):
-                if not st.session_state.chat_messages or st.session_state.chat_messages[-1]["content"] != suggestions[2][1]:
-                    st.session_state.chat_messages.append({"role": "user", "content": suggestions[2][1]})
-                    with st.spinner("🤔 Thinking..."):
-                        response = get_chat_response(suggestions[2][1])
-                        st.session_state.chat_messages.append({"role": "assistant", "content": response})
-                    st.rerun()
+                # FIXED: Clear chat so new answer appears at top
+                st.session_state.chat_messages = []
+                st.session_state.chat_messages.append({"role": "user", "content": suggestions[2][1]})
+                with st.spinner("🤔 Thinking..."):
+                    response = get_chat_response(suggestions[2][1])
+                    st.session_state.chat_messages.append({"role": "assistant", "content": response})
+                st.rerun()
         with col4:
             if st.button(suggestions[3][0] + " " + suggestions[3][1], key=f"q_3", use_container_width=True):
-                if not st.session_state.chat_messages or st.session_state.chat_messages[-1]["content"] != suggestions[3][1]:
-                    st.session_state.chat_messages.append({"role": "user", "content": suggestions[3][1]})
-                    with st.spinner("🤔 Thinking..."):
-                        response = get_chat_response(suggestions[3][1])
-                        st.session_state.chat_messages.append({"role": "assistant", "content": response})
-                    st.rerun()
+                # FIXED: Clear chat so new answer appears at top
+                st.session_state.chat_messages = []
+                st.session_state.chat_messages.append({"role": "user", "content": suggestions[3][1]})
+                with st.spinner("🤔 Thinking..."):
+                    response = get_chat_response(suggestions[3][1])
+                    st.session_state.chat_messages.append({"role": "assistant", "content": response})
+                st.rerun()
         
         st.markdown("---")
         
