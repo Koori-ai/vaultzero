@@ -15,7 +15,7 @@ import anthropic
 # Initialize RAG system with caching and auto-download
 @st.cache_resource
 def initialize_rag():
-    """Initialize RAG system once and cache it - downloads dataset if needed"""
+    """Initialize RAG system once and cache it - uses pre-downloaded dataset from Docker build!"""
     
     data_path = "./data/zt_synthetic_dataset_complete.json"
     persist_directory = "./data/chroma_db"
@@ -23,9 +23,10 @@ def initialize_rag():
     # Ensure data directory exists
     os.makedirs("./data", exist_ok=True)
     
-    # Download dataset from HuggingFace if not exists
+    # PERFORMANCE FIX: Check if dataset was baked into Docker image
+    # If not, download from HuggingFace (fallback for local dev)
     if not os.path.exists(data_path):
-        print("📥 Downloading dataset from HuggingFace...")
+        print("📥 Dataset not found - downloading from HuggingFace...")
         try:
             hf_hub_download(
                 repo_id="Reply2susi/zero-trust-maturity-assessments",
@@ -50,14 +51,16 @@ def initialize_rag():
                 print(f"❌ Failed to download dataset: {e2}")
                 raise
     else:
-        print("✅ Dataset file found locally")
+        print("✅ Dataset found (pre-loaded from Docker build)!")
     
     # Initialize RAG system
+    print("🔧 Initializing RAG vector store...")
     rag = VaultZeroRAG(
         data_path=data_path,
         persist_directory=persist_directory
     )
     rag.initialize()
+    print("✅ RAG system ready!")
     return rag
 
 # Initialize RAG system
@@ -118,8 +121,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-def get_chat_response(user_message: str) -> str:
-    """Get response from Claude API with context awareness"""
+def get_chat_response(user_message: str, stream: bool = False):
+    """Get response from Claude API with context awareness - using Haiku for speed!"""
     
     # Build context from session state
     context_parts = []
@@ -167,7 +170,7 @@ The Zero Trust maturity scale is:
 The six pillars are: Identity, Devices, Networks, Applications, Data, Visibility & Analytics.
 
 Be concise, helpful, and specific. Use the user's assessment context when available.
-Keep responses under 250 words unless asked for more detail.
+Keep responses under 200 words for quick readability.
 """
     
     if context_parts:
@@ -193,20 +196,35 @@ Keep responses under 250 words unless asked for more detail.
     })
     
     try:
-        # Call Claude API
+        # Call Claude API - Using HAIKU for 10x speed!
         client = anthropic.Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
         
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=1024,
-            system=system_prompt,
-            messages=messages
-        )
-        
-        return response.content[0].text
+        # STREAMING for instant feel
+        if stream:
+            with client.messages.stream(
+                model="claude-haiku-4-5-20251001",  # HAIKU = 10x faster!
+                max_tokens=300,  # Reduced for snappier responses
+                system=system_prompt,
+                messages=messages
+            ) as stream:
+                for text in stream.text_stream:
+                    yield text
+        else:
+            # Non-streaming for quick questions
+            response = client.messages.create(
+                model="claude-haiku-4-5-20251001",  # HAIKU = 10x faster!
+                max_tokens=300,  # Reduced for snappier responses
+                system=system_prompt,
+                messages=messages
+            )
+            return response.content[0].text
         
     except Exception as e:
-        return f"I apologize, but I encountered an error: {str(e)}\n\nPlease try again or rephrase your question."
+        error_msg = f"I apologize, but I encountered an error: {str(e)}\n\nPlease try again or rephrase your question."
+        if stream:
+            yield error_msg
+        else:
+            return error_msg
 
 
 # Initialize session state
@@ -267,7 +285,7 @@ with st.sidebar:
     ✅ 100% secure & private  
     """)
 
-# Chat Dialog - ENHANCED WITH SPINNER & BETTER LAYOUT
+# Chat Dialog - FIXED: Clears chat on quick question click so answer appears at top
 if st.session_state.show_chat:
     @st.dialog("💬 AI Assistant", width="large")
     def show_chat_dialog():
@@ -299,8 +317,8 @@ if st.session_state.show_chat:
                 # FIXED: Clear chat so new answer appears at top
                 st.session_state.chat_messages = []
                 st.session_state.chat_messages.append({"role": "user", "content": suggestions[0][1]})
-                with st.spinner("🤔 Thinking..."):
-                    response = get_chat_response(suggestions[0][1])
+                with st.spinner("💨 Quick answer..."):
+                    response = get_chat_response(suggestions[0][1], stream=False)
                     st.session_state.chat_messages.append({"role": "assistant", "content": response})
                 st.rerun()
         with col2:
@@ -308,8 +326,8 @@ if st.session_state.show_chat:
                 # FIXED: Clear chat so new answer appears at top
                 st.session_state.chat_messages = []
                 st.session_state.chat_messages.append({"role": "user", "content": suggestions[1][1]})
-                with st.spinner("🤔 Thinking..."):
-                    response = get_chat_response(suggestions[1][1])
+                with st.spinner("💨 Quick answer..."):
+                    response = get_chat_response(suggestions[1][1], stream=False)
                     st.session_state.chat_messages.append({"role": "assistant", "content": response})
                 st.rerun()
         
@@ -320,8 +338,8 @@ if st.session_state.show_chat:
                 # FIXED: Clear chat so new answer appears at top
                 st.session_state.chat_messages = []
                 st.session_state.chat_messages.append({"role": "user", "content": suggestions[2][1]})
-                with st.spinner("🤔 Thinking..."):
-                    response = get_chat_response(suggestions[2][1])
+                with st.spinner("💨 Quick answer..."):
+                    response = get_chat_response(suggestions[2][1], stream=False)
                     st.session_state.chat_messages.append({"role": "assistant", "content": response})
                 st.rerun()
         with col4:
@@ -329,8 +347,8 @@ if st.session_state.show_chat:
                 # FIXED: Clear chat so new answer appears at top
                 st.session_state.chat_messages = []
                 st.session_state.chat_messages.append({"role": "user", "content": suggestions[3][1]})
-                with st.spinner("🤔 Thinking..."):
-                    response = get_chat_response(suggestions[3][1])
+                with st.spinner("💨 Quick answer..."):
+                    response = get_chat_response(suggestions[3][1], stream=False)
                     st.session_state.chat_messages.append({"role": "assistant", "content": response})
                 st.rerun()
         
@@ -346,13 +364,24 @@ if st.session_state.show_chat:
         else:
             st.info("👋 Hi! I'm your Zero Trust AI assistant. Ask me anything!")
         
-        # Chat input with spinner
+        # Chat input with STREAMING for instant responses
         user_input = st.chat_input("Type your question here...", key="chat_input_dialog")
         if user_input:
             st.session_state.chat_messages.append({"role": "user", "content": user_input})
-            with st.spinner("🤔 Thinking..."):
-                response = get_chat_response(user_input)
-                st.session_state.chat_messages.append({"role": "assistant", "content": response})
+            
+            # Stream the response for instant feel!
+            response_placeholder = st.empty()
+            full_response = ""
+            
+            with response_placeholder.container():
+                with st.chat_message("assistant"):
+                    message_placeholder = st.empty()
+                    for chunk in get_chat_response(user_input, stream=True):
+                        full_response += chunk
+                        message_placeholder.markdown(full_response + "▌")
+                    message_placeholder.markdown(full_response)
+            
+            st.session_state.chat_messages.append({"role": "assistant", "content": full_response})
             st.rerun()
         
         # Bottom buttons

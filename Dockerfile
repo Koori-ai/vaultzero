@@ -1,43 +1,59 @@
-FROM python:3.11-slim as base
+# Use Python 3.11 slim for smaller image
+FROM python:3.11-slim
 
+# Set working directory
 WORKDIR /app
 
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
-
-FROM base as dependencies
-
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    curl \
     build-essential \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy requirements first for better caching
 COPY requirements.txt .
+
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-FROM base as application
+# Copy application code
+COPY . .
 
-COPY --from=dependencies /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=dependencies /usr/local/bin /usr/local/bin
+# PERFORMANCE FIX: Pre-download dataset during build (not at runtime!)
+# This eliminates the HuggingFace download on every startup
+RUN mkdir -p /app/data && \
+    python -c "from huggingface_hub import hf_hub_download; \
+    hf_hub_download(\
+        repo_id='Reply2susi/zero-trust-maturity-assessments', \
+        filename='zt_synthetic_dataset_complete.json', \
+        repo_type='dataset', \
+        local_dir='/app/data'\
+    )" || echo "Dataset download during build failed, will retry at runtime"
 
-RUN useradd -m -u 1000 vaultzero && \
-    mkdir -p /app/data/chroma_db && \
-    chown -R vaultzero:vaultzero /app
+# PERFORMANCE FIX: Pre-initialize ChromaDB during build
+# This creates the vector database ahead of time
+RUN python -c "import os; \
+os.makedirs('/app/data/chroma_db', exist_ok=True); \
+try: \
+    from rag.vectorstore import VaultZeroRAG; \
+    rag = VaultZeroRAG(data_path='/app/data/zt_synthetic_dataset_complete.json', persist_directory='/app/data/chroma_db'); \
+    rag.initialize(); \
+    print('✅ RAG initialized during build!'); \
+except Exception as e: \
+    print(f'⚠️ RAG init skipped: {e}');" || echo "RAG init during build failed, will init at runtime"
 
-COPY --chown=vaultzero:vaultzero . .
+# Expose port 8080 for Cloud Run
+EXPOSE 8080
 
-USER vaultzero
+# Set environment variables for Streamlit
+ENV STREAMLIT_SERVER_PORT=8080
+ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
+ENV STREAMLIT_SERVER_HEADLESS=true
+ENV STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 
-EXPOSE 8501
-
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl --fail http://localhost:8501/_stcore/health || exit 1
+    CMD curl -f http://localhost:8080/_stcore/health || exit 1
 
-CMD ["streamlit", "run", "app.py", \
-     "--server.port=8501", \
-     "--server.address=0.0.0.0", \
-     "--server.headless=true", \
-     "--server.enableCORS=false", \
-     "--server.enableXsrfProtection=true"]
+# Run the application
+CMD ["streamlit", "run", "app.py", "--server.port=8080", "--server.address=0.0.0.0"]
