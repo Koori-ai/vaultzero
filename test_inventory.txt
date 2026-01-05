@@ -1,0 +1,20 @@
+Asset Inventory Summary
+
+IT Assets:
+- 50 workstations (Windows 10/11)
+- 10 servers (AWS EC2 instances)
+- 5 network devices (Cisco routers/switches)
+- Cloud infrastructure: AWS (primary), Azure (backup)
+
+Security Tools:
+- Identity provider: Okta
+- SIEM: Splunk Enterprise
+- EDR: CrowdStrike Falcon
+- Vulnerability scanner: Tenable Nessus
+- Cloud security: AWS GuardDuty, Security Hub
+
+Data Classification:
+- Public data: Marketing materials
+- Internal data: Employee directory
+- Confidential: Customer information, financial records
+- Encryption used for all confidential data at rest

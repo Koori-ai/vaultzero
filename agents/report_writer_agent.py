@@ -36,7 +36,7 @@ class ReportWriterAgent(BaseAgent):
         import os
         
         self.haiku_llm = ChatAnthropic(
-            model="claude-haiku-4-5-20241001",
+            model="claude-haiku-4-5-20251001",
             temperature=0.0,
             anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
             max_tokens=2048
@@ -82,7 +82,7 @@ class ReportWriterAgent(BaseAgent):
         # Save report
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         report_filename = f"ZeroTrust_Assessment_{timestamp}.docx"
-        report_path = f"/home/claude/{report_filename}"
+        report_path = report_filename  # ← CORRECT (saves in current directory)
         
         doc.save(report_path)
         
