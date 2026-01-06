@@ -1,718 +1,105 @@
 """
-VaultZero - AI-Powered Zero Trust Assessment Platform
-Streamlit Web Interface
+VaultZero v2.0 - AI-Powered Zero Trust Assessment
 """
-
 import streamlit as st
-import json
+import asyncio
 import os
+from pathlib import Path
+import json
 from datetime import datetime
-from orchestrator import VaultZeroOrchestrator
-from rag.vectorstore import VaultZeroRAG
-from huggingface_hub import hf_hub_download
-import anthropic
+import traceback
 
-# Initialize RAG system with caching and auto-download
-@st.cache_resource
-def initialize_rag():
-    """Initialize RAG system once and cache it - uses pre-downloaded dataset from Docker build!"""
-    
-    data_path = "./data/zt_synthetic_dataset_complete.json"
-    persist_directory = "./data/chroma_db"
-    
-    # Ensure data directory exists
-    os.makedirs("./data", exist_ok=True)
-    
-    # PERFORMANCE FIX: Check if dataset was baked into Docker image
-    # If not, download from HuggingFace (fallback for local dev)
-    if not os.path.exists(data_path):
-        print("📥 Dataset not found - downloading from HuggingFace...")
-        try:
-            hf_hub_download(
-                repo_id="Reply2susi/zero-trust-maturity-assessments",
-                filename="zt_synthetic_dataset_complete.json",
-                repo_type="dataset",
-                local_dir="./data",
-                token=os.getenv('HUGGINGFACE_TOKEN')
-            )
-            print("✅ Dataset downloaded successfully!")
-        except Exception as e:
-            print(f"⚠️ Error downloading with token: {e}")
-            # Try without token (for public datasets)
-            try:
-                hf_hub_download(
-                    repo_id="Reply2susi/zero-trust-maturity-assessments",
-                    filename="zt_synthetic_dataset_complete.json",
-                    repo_type="dataset",
-                    local_dir="./data"
-                )
-                print("✅ Dataset downloaded successfully (without token)!")
-            except Exception as e2:
-                print(f"❌ Failed to download dataset: {e2}")
-                raise
-    else:
-        print("✅ Dataset found (pre-loaded from Docker build)!")
-    
-    # Initialize RAG system
-    print("🔧 Initializing RAG vector store...")
-    rag = VaultZeroRAG(
-        data_path=data_path,
-        persist_directory=persist_directory
-    )
-    rag.initialize()
-    print("✅ RAG system ready!")
-    return rag
+# Try importing and capture any errors
+AGENTS_AVAILABLE = False
+IMPORT_ERROR = None
 
-# Initialize RAG system
-rag = initialize_rag()
+try:
+    from orchestrator import VaultZeroOrchestrator
+    AGENTS_AVAILABLE = True
+except Exception as e:
+    IMPORT_ERROR = str(e)
+    IMPORT_ERROR_TRACEBACK = traceback.format_exc()
 
 # Page config
 st.set_page_config(
-    page_title="VaultZero - Zero Trust Assessment",
+    page_title="VaultZero v2.0",
     page_icon="🔒",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
-# Custom CSS for better styling
-st.markdown("""
-    <style>
-    .main-header {
-        font-size: 3rem;
-        font-weight: bold;
-        color: #1f77b4;
-        text-align: center;
-        margin-bottom: 1rem;
-    }
-    .sub-header {
-        font-size: 1.2rem;
-        text-align: center;
-        color: #666;
-        margin-bottom: 2rem;
-    }
-    .stButton>button {
-        width: 100%;
-        background-color: #1f77b4;
-        color: white;
-        font-size: 1.1rem;
-        padding: 0.75rem;
-        border-radius: 0.5rem;
-        border: none;
-        font-weight: bold;
-    }
-    .stButton>button:hover {
-        background-color: #1557a0;
-    }
-    .success-box {
-        padding: 1rem;
-        background-color: #d4edda;
-        border-left: 5px solid #28a745;
-        border-radius: 0.5rem;
-        margin: 1rem 0;
-    }
-    .info-box {
-        padding: 1rem;
-        background-color: #d1ecf1;
-        border-left: 5px solid #17a2b8;
-        border-radius: 0.5rem;
-        margin: 1rem 0;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-
-def get_chat_response(user_message: str, stream: bool = False):
-    """Get response from Claude API with context awareness - using Haiku for speed!"""
-    
-    # Build context from session state
-    context_parts = []
-    
-    # Add assessment results if available
-    if st.session_state.get('assessment_complete') and st.session_state.get('results'):
-        results = st.session_state.results
-        
-        if 'summary' in results:
-            summary = results['summary']
-            context_parts.append(
-                f"User's Assessment Results:\n"
-                f"- Overall Score: {summary.get('current_score', 'N/A')}/4.0\n"
-                f"- Maturity Level: {summary.get('current_maturity', 'N/A')}\n"
-                f"- Percentile: {summary.get('peer_percentile', 'N/A')}th\n"
-                f"- Target: {summary.get('target_maturity', 'N/A')}"
-            )
-        
-        if 'assessment' in results and 'pillars' in results['assessment']:
-            pillar_scores = []
-            for pillar_name, pillar_data in results['assessment']['pillars'].items():
-                pillar_scores.append(
-                    f"  - {pillar_name.title()}: {pillar_data['score']}/4.0 ({pillar_data['maturity_level']})"
-                )
-            if pillar_scores:
-                context_parts.append("Pillar Scores:\n" + "\n".join(pillar_scores))
-    
-    # Build system prompt
-    system_prompt = """You are a Zero Trust security expert assistant integrated into VaultZero, 
-an AI-powered Zero Trust maturity assessment platform.
-
-Your role is to:
-- Answer questions about Zero Trust architecture and principles
-- Help users understand their assessment results
-- Provide guidance on improving Zero Trust maturity
-- Explain scoring and recommendations
-- Give examples of good security practices
-
-The Zero Trust maturity scale is:
-- 1.0 - Initial: Ad-hoc security processes
-- 2.0 - Traditional: Basic perimeter security
-- 3.0 - Advanced: Mature Zero Trust implementation
-- 4.0 - Optimal: Industry-leading Zero Trust
-
-The six pillars are: Identity, Devices, Networks, Applications, Data, Visibility & Analytics.
-
-Be concise, helpful, and specific. Use the user's assessment context when available.
-Keep responses under 200 words for quick readability.
-"""
-    
-    if context_parts:
-        system_prompt += f"\n\nCurrent User Context:\n" + "\n\n".join(context_parts)
-    
-    # Build messages for API
-    messages = []
-    
-    # Add recent chat history (last 6 messages for context)
-    if 'chat_messages' in st.session_state:
-        recent_messages = st.session_state.chat_messages[-6:] if len(st.session_state.chat_messages) > 6 else st.session_state.chat_messages
-        for msg in recent_messages:
-            if msg['role'] != 'system':
-                messages.append({
-                    "role": msg["role"],
-                    "content": msg["content"]
-                })
-    
-    # Add current message
-    messages.append({
-        "role": "user",
-        "content": user_message
-    })
-    
-    try:
-        # Call Claude API - Using HAIKU for 10x speed!
-        client = anthropic.Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
-        
-        # STREAMING for instant feel
-        if stream:
-            with client.messages.stream(
-                model="claude-haiku-4-5-20251001",  # HAIKU = 10x faster!
-                max_tokens=300,  # Reduced for snappier responses
-                system=system_prompt,
-                messages=messages
-            ) as stream:
-                for text in stream.text_stream:
-                    yield text
-        else:
-            # Non-streaming for quick questions
-            response = client.messages.create(
-                model="claude-haiku-4-5-20251001",  # HAIKU = 10x faster!
-                max_tokens=300,  # Reduced for snappier responses
-                system=system_prompt,
-                messages=messages
-            )
-            return response.content[0].text
-        
-    except Exception as e:
-        error_msg = f"I apologize, but I encountered an error: {str(e)}\n\nPlease try again or rephrase your question."
-        if stream:
-            yield error_msg
-        else:
-            return error_msg
-
-
-# Initialize session state
-if 'assessment_complete' not in st.session_state:
-    st.session_state.assessment_complete = False
-if 'results' not in st.session_state:
-    st.session_state.results = None
-if 'chat_messages' not in st.session_state:
-    st.session_state.chat_messages = []
-if 'show_chat' not in st.session_state:
-    st.session_state.show_chat = False
-
-# Header
-st.markdown('<div class="main-header">🔒 VaultZero</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">AI-Powered Zero Trust Maturity Assessment</div>', unsafe_allow_html=True)
+st.title("🔒 VaultZero v2.0")
+st.subheader("AI-Powered Zero Trust Assessment")
 
 # Sidebar
 with st.sidebar:
-    st.image("https://via.placeholder.com/300x100/1f77b4/ffffff?text=VaultZero", use_container_width=True)
+    st.markdown("### ⚙️ Status")
     
-    # AI ASSISTANT BUTTON - TOP OF SIDEBAR
-    st.markdown("---")
-    if st.button("💬 AI Assistant", key="sidebar_chat", use_container_width=True, type="primary"):
-        st.session_state.show_chat = True
-        st.rerun()
-    st.markdown("---")
-    
-    st.markdown("### 🎯 How It Works")
-    st.markdown("""
-    1. **Describe** your system
-    2. **Answer** questions for each pillar
-    3. **Get** instant AI assessment
-    4. **Compare** against peers (RAG-powered)
-    5. **Receive** 6-month roadmap
-    """)
-    
-    st.markdown("---")
-    st.markdown("### 📊 About")
-    st.markdown("""
-    VaultZero uses a **multi-agent AI system** to:
-    - Assess Zero Trust maturity
-    - Benchmark against similar systems
-    - Generate actionable roadmaps
-    
-    **Powered by:**
-    - Claude Sonnet 4
-    - LangGraph
-    - RAG (21 assessments)
-    """)
-    
-    st.markdown("---")
-    st.markdown("### 🌟 Features")
-    st.markdown("""
-    ✅ Real-time assessment  
-    ✅ Peer benchmarking  
-    ✅ Cost estimates  
-    ✅ Downloadable reports  
-    ✅ 100% secure & private  
-    """)
-
-# Chat Dialog - FIXED: Clears chat on quick question click so answer appears at top
-if st.session_state.show_chat:
-    @st.dialog("💬 AI Assistant", width="large")
-    def show_chat_dialog():
-        st.markdown("### Ask me about Zero Trust!")
-        
-        # Suggested questions based on context
-        if st.session_state.assessment_complete and st.session_state.results:
-            suggestions = [
-                ("💡", "Why did I get this score?"),
-                ("🎯", "What are my quick wins?"),
-                ("📊", "How do I compare to others?"),
-                ("🔍", "Explain my recommendations"),
-            ]
-        else:
-            suggestions = [
-                ("❓", "What is Zero Trust?"),
-                ("📝", "How should I score identity?"),
-                ("💡", "Give me examples for networks"),
-                ("🎯", "What's a good maturity score?"),
-            ]
-        
-        # COMPACT Quick question buttons - 2x2 grid - FIXED: Clears chat before adding new Q&A
-        st.markdown("**Quick questions:**")
-        
-        # First row
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button(suggestions[0][0] + " " + suggestions[0][1], key=f"q_0", use_container_width=True):
-                # FIXED: Clear chat so new answer appears at top
-                st.session_state.chat_messages = []
-                st.session_state.chat_messages.append({"role": "user", "content": suggestions[0][1]})
-                with st.spinner("💨 Quick answer..."):
-                    response = get_chat_response(suggestions[0][1], stream=False)
-                    st.session_state.chat_messages.append({"role": "assistant", "content": response})
-                st.rerun()
-        with col2:
-            if st.button(suggestions[1][0] + " " + suggestions[1][1], key=f"q_1", use_container_width=True):
-                # FIXED: Clear chat so new answer appears at top
-                st.session_state.chat_messages = []
-                st.session_state.chat_messages.append({"role": "user", "content": suggestions[1][1]})
-                with st.spinner("💨 Quick answer..."):
-                    response = get_chat_response(suggestions[1][1], stream=False)
-                    st.session_state.chat_messages.append({"role": "assistant", "content": response})
-                st.rerun()
-        
-        # Second row
-        col3, col4 = st.columns(2)
-        with col3:
-            if st.button(suggestions[2][0] + " " + suggestions[2][1], key=f"q_2", use_container_width=True):
-                # FIXED: Clear chat so new answer appears at top
-                st.session_state.chat_messages = []
-                st.session_state.chat_messages.append({"role": "user", "content": suggestions[2][1]})
-                with st.spinner("💨 Quick answer..."):
-                    response = get_chat_response(suggestions[2][1], stream=False)
-                    st.session_state.chat_messages.append({"role": "assistant", "content": response})
-                st.rerun()
-        with col4:
-            if st.button(suggestions[3][0] + " " + suggestions[3][1], key=f"q_3", use_container_width=True):
-                # FIXED: Clear chat so new answer appears at top
-                st.session_state.chat_messages = []
-                st.session_state.chat_messages.append({"role": "user", "content": suggestions[3][1]})
-                with st.spinner("💨 Quick answer..."):
-                    response = get_chat_response(suggestions[3][1], stream=False)
-                    st.session_state.chat_messages.append({"role": "assistant", "content": response})
-                st.rerun()
-        
-        st.markdown("---")
-        
-        # Chat history display - OPTIMIZED HEIGHT
-        if st.session_state.chat_messages:
-            chat_container = st.container(height=350)
-            with chat_container:
-                for message in st.session_state.chat_messages:
-                    with st.chat_message(message["role"]):
-                        st.markdown(message["content"])
-        else:
-            st.info("👋 Hi! I'm your Zero Trust AI assistant. Ask me anything!")
-        
-        # Chat input with STREAMING for instant responses
-        user_input = st.chat_input("Type your question here...", key="chat_input_dialog")
-        if user_input:
-            st.session_state.chat_messages.append({"role": "user", "content": user_input})
-            
-            # Stream the response for instant feel!
-            response_placeholder = st.empty()
-            full_response = ""
-            
-            with response_placeholder.container():
-                with st.chat_message("assistant"):
-                    message_placeholder = st.empty()
-                    for chunk in get_chat_response(user_input, stream=True):
-                        full_response += chunk
-                        message_placeholder.markdown(full_response + "▌")
-                    message_placeholder.markdown(full_response)
-            
-            st.session_state.chat_messages.append({"role": "assistant", "content": full_response})
-            st.rerun()
-        
-        # Bottom buttons
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            if st.button("🗑️ Clear Chat", key="clear_btn", use_container_width=True):
-                st.session_state.chat_messages = []
-                st.rerun()
-        with col2:
-            if st.button("✖️ Close", key="close_btn", use_container_width=True):
-                st.session_state.show_chat = False
-                st.rerun()
-    
-    show_chat_dialog()
+    if AGENTS_AVAILABLE:
+        st.success("✅ AI Agents Ready")
+    else:
+        st.error("⚠️ AI Agents Not Available")
+        if IMPORT_ERROR:
+            with st.expander("🔍 Error Details", expanded=True):
+                st.code(IMPORT_ERROR)
+                st.code(IMPORT_ERROR_TRACEBACK)
 
 # Main content
-if not st.session_state.assessment_complete:
-    # Input form
-    st.markdown("## 📝 System Information")
+if AGENTS_AVAILABLE:
+    st.success("✅ System ready for AI-powered assessments!")
     
-    with st.form("assessment_form"):
-        # System description
-        system_description = st.text_area(
-            "**System Description**",
-            placeholder="e.g., Cloud-based healthcare platform handling patient records, hosted on AWS with microservices architecture...",
-            height=100,
-            help="Provide a brief description of the system you want to assess"
-        )
+    # File upload
+    uploaded_files = st.file_uploader(
+        "Upload Documents",
+        type=['pdf', 'docx', 'txt', 'pptx', 'xlsx'],
+        accept_multiple_files=True,
+        help="Upload Zero Trust architecture docs, policies, configs, etc."
+    )
+    
+    if uploaded_files:
+        st.info(f"📁 {len(uploaded_files)} files uploaded")
         
-        st.markdown("---")
-        st.markdown("## 🔐 Zero Trust Pillar Assessment")
-        st.markdown("*Answer the questions below for each pillar:*")
+        # Show file details
+        for file in uploaded_files:
+            st.text(f"• {file.name} ({file.size / 1024:.1f} KB)")
         
-        # Create two columns for better layout
-        col1, col2 = st.columns(2)
+       # Get API key from secrets (never from user input!)
+        api_key = os.getenv('ANTHROPIC_API_KEY') or st.secrets.get("ANTHROPIC_API_KEY")
         
-        with col1:
-            # Identity
-            st.markdown("### 🔑 Identity")
-            identity_answer = st.text_area(
-                "Describe your identity and access management practices",
-                placeholder="e.g., We use Okta SSO with MFA enforced. RBAC implemented with quarterly reviews...",
-                height=120,
-                key="identity"
-            )
-            
-            # Devices
-            st.markdown("### 💻 Devices")
-            devices_answer = st.text_area(
-                "Describe your device security and management",
-                placeholder="e.g., Corporate laptops managed with Intune. EDR deployed on all endpoints...",
-                height=120,
-                key="devices"
-            )
-            
-            # Networks
-            st.markdown("### 🌐 Networks")
-            networks_answer = st.text_area(
-                "Describe your network security architecture",
-                placeholder="e.g., Zero-trust network access via Zscaler. Micro-segmentation in cloud...",
-                height=120,
-                key="networks"
-            )
+        if not api_key:
+            st.warning("⚠️ API key not configured. Add ANTHROPIC_API_KEY to .env or Streamlit secrets.")
         
-        with col2:
-            # Applications
-            st.markdown("### 📱 Applications")
-            applications_answer = st.text_area(
-                "Describe your application security practices",
-                placeholder="e.g., Security testing in CI/CD. Runtime protection with RASP...",
-                height=120,
-                key="applications"
-            )
-            
-            # Data
-            st.markdown("### 🗄️ Data")
-            data_answer = st.text_area(
-                "Describe your data protection and governance",
-                placeholder="e.g., Data classification enforced. DLP policies active. Encryption at rest and in transit...",
-                height=120,
-                key="data"
-            )
+        if api_key and st.button("🚀 Run AI Assessment"):
+            with st.spinner("Running AI-powered assessment..."):
+                try:
+                    # TODO: Implement actual workflow
+                    st.info("🤖 Agent workflow will be implemented here!")
+                    st.success("✅ Assessment complete! (Demo mode)")
+                    
+                    # Placeholder results
+                    st.markdown("### 📊 Results Preview")
+                    st.json({
+                        "status": "demo",
+                        "files_processed": len(uploaded_files),
+                        "message": "Full agent workflow coming soon!"
+                    })
+                    
+                except Exception as e:
+                    st.error(f"❌ Error: {str(e)}")
+                    st.code(traceback.format_exc())
         
-        st.markdown("---")
-        
-        # Submit button
-        submitted = st.form_submit_button("🚀 Run VaultZero Assessment", use_container_width=True)
-        
-        if submitted:
-            # Validation
-            if not system_description or not all([identity_answer, devices_answer, networks_answer, applications_answer, data_answer]):
-                st.error("⚠️ Please fill in all fields before submitting!")
-            else:
-                # Prepare answers
-                user_answers = {
-                    "identity": identity_answer,
-                    "devices": devices_answer,
-                    "networks": networks_answer,
-                    "applications": applications_answer,
-                    "data": data_answer
-                }
-                
-                # Run assessment
-                with st.spinner("🤖 Running multi-agent assessment... This may take 60-90 seconds..."):
-                    try:
-                        # Initialize orchestrator with RAG system
-                        orchestrator = VaultZeroOrchestrator(rag_system=rag)
-                        
-                        # Run complete workflow
-                        results = orchestrator.run(system_description, user_answers)
-                        
-                        # Save to session state
-                        st.session_state.results = results
-                        st.session_state.assessment_complete = True
-                        
-                        # Rerun to show results
-                        st.rerun()
-                        
-                    except Exception as e:
-                        st.error(f"❌ Error running assessment: {str(e)}")
-                        st.exception(e)
-
 else:
-    # Display results
-    results = st.session_state.results
+    st.error("⚠️ Cannot run assessments - AI agents not available")
+    st.info("Check the error details in the sidebar")
     
-    st.markdown('<div class="success-box">', unsafe_allow_html=True)
-    st.markdown("### ✅ Assessment Complete!")
-    st.markdown("Your comprehensive Zero Trust assessment is ready.")
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Executive Summary
-    st.markdown("## 📊 Executive Summary")
-    
-    summary = results['summary']
-    
-    col1, col2, col3, col4, col5 = st.columns(5)
-    
-    with col1:
-        st.metric(
-            label="Current Maturity",
-            value=summary['current_maturity'],
-            delta=None
-        )
-    
-    with col2:
-        st.metric(
-            label="Current Score",
-            value=f"{summary['current_score']:.1f}/4.0",
-            delta=None
-        )
-    
-    with col3:
-        st.metric(
-            label="Peer Percentile",
-            value=f"{summary['peer_percentile']}th",
-            delta=None
-        )
-    
-    with col4:
-        st.metric(
-            label="6-Month Target",
-            value=summary['target_maturity'],
-            delta=None
-        )
-    
-    with col5:
-        st.metric(
-            label="Investment",
-            value=summary['investment_range'].split(' - ')[0],
-            delta=summary['investment_range'].split(' - ')[1]
-        )
-    
-    # Tabs for detailed results
-    tab1, tab2, tab3, tab4 = st.tabs(["📋 Assessment", "📊 Benchmark", "🗺️ Roadmap", "📥 Download"])
-    
-    with tab1:
-        st.markdown("### 🔐 Pillar Assessment Results")
-        
-        assessment = results['assessment']
-        
-        for pillar_name, pillar_data in assessment['pillars'].items():
-            with st.expander(f"**{pillar_name.upper()}** - {pillar_data['maturity_level']} ({pillar_data['score']:.1f}/4.0)", expanded=False):
-                st.markdown(f"**Findings:** {pillar_data['findings']}")
-                
-                if pillar_data.get('strengths'):
-                    st.markdown("**✅ Strengths:**")
-                    for strength in pillar_data['strengths']:
-                        st.markdown(f"- {strength}")
-                
-                if pillar_data.get('gaps'):
-                    st.markdown("**⚠️ Gaps:**")
-                    for gap in pillar_data['gaps']:
-                        st.markdown(f"- {gap}")
-        
-        st.markdown("### 🎯 Key Findings")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("**⚡ Quick Wins**")
-            for win in assessment['quick_wins']:
-                st.markdown(f"- {win}")
-        
-        with col2:
-            st.markdown("**🚀 Strategic Recommendations**")
-            for rec in assessment['strategic_recommendations']:
-                st.markdown(f"- {rec}")
-    
-    with tab2:
-        st.markdown("### 📊 Benchmark Analysis")
-        
-        benchmark = results['benchmark']
-        
-        st.markdown(f"**Competitive Position:** {benchmark['competitive_position']}")
-        
-        st.markdown("#### Pillar Rankings vs Peers")
-        
-        for pillar, data in benchmark['pillar_rankings'].items():
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.markdown(f"**{pillar.title()}**")
-            with col2:
-                st.markdown(f"{data['percentile']}th percentile ({data['vs_peers']})")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("**💪 Strengths vs Peers**")
-            for strength in benchmark['strengths_vs_peers']:
-                st.markdown(f"- {strength}")
-        
-        with col2:
-            st.markdown("**⚠️ Gaps vs Peers**")
-            for gap in benchmark['gaps_vs_peers']:
-                st.markdown(f"- {gap}")
-        
-        st.markdown("#### 🌟 Peer Best Practices")
-        for practice in benchmark['peer_best_practices']:
-            st.markdown(f"**{practice['practice']}**")
-            st.markdown(f"- From: {practice['system']}")
-            st.markdown(f"- How: {practice['implementation']}")
-            st.markdown("")
-    
-    with tab3:
-        st.markdown("### 🗺️ 6-Month Implementation Roadmap")
-        
-        roadmap = results['roadmap']
-        
-        st.markdown(f"**Executive Summary:** {roadmap['executive_summary']}")
-        st.markdown(f"**Total Investment:** {roadmap['total_cost_estimate']['minimum']} - {roadmap['total_cost_estimate']['maximum']}")
-        
-        st.markdown("#### ⚡ Quick Wins (Months 1-2)")
-        for qw in roadmap['quick_wins']:
-            with st.expander(f"**{qw['initiative']}** - {qw['effort']} effort, {qw['impact']} impact"):
-                st.markdown(f"**Timeline:** {qw['timeline']}")
-                st.markdown(f"**Cost:** {qw['cost_estimate']}")
-                st.markdown(f"**Why Now:** {qw['why_now']}")
-                st.markdown("**Success Metrics:**")
-                for metric in qw['success_metrics']:
-                    st.markdown(f"- {metric}")
-        
-        st.markdown("#### 🎯 Medium-Term Initiatives (Months 3-4)")
-        for mt in roadmap['medium_term']:
-            with st.expander(f"**{mt['initiative']}** - {mt['effort']} effort, {mt['impact']} impact"):
-                st.markdown(f"**Timeline:** {mt['timeline']}")
-                st.markdown(f"**Cost:** {mt['cost_estimate']}")
-                if 'dependencies' in mt:
-                    st.markdown(f"**Dependencies:** {', '.join(mt['dependencies'])}")
-                st.markdown("**Success Metrics:**")
-                for metric in mt['success_metrics']:
-                    st.markdown(f"- {metric}")
-        
-        st.markdown("#### 🚀 Transformational Initiatives (Months 5-6)")
-        for lt in roadmap['long_term']:
-            with st.expander(f"**{lt['initiative']}** - {lt['effort']} effort, {lt['impact']} impact"):
-                st.markdown(f"**Timeline:** {lt['timeline']}")
-                st.markdown(f"**Cost:** {lt['cost_estimate']}")
-                if 'dependencies' in lt:
-                    st.markdown(f"**Dependencies:** {', '.join(lt['dependencies'])}")
-                st.markdown("**Success Metrics:**")
-                for metric in lt['success_metrics']:
-                    st.markdown(f"- {metric}")
-        
-        st.markdown("#### 📅 Month-by-Month Plan")
-        for month_key, month_data in roadmap['month_by_month'].items():
-            month_num = month_key.split('_')[1]
-            with st.expander(f"**Month {month_num}:** {month_data['focus']}"):
-                st.markdown("**Initiatives:**")
-                for init in month_data['initiatives']:
-                    st.markdown(f"- {init}")
-                st.markdown("**Milestones:**")
-                for milestone in month_data['milestones']:
-                    st.markdown(f"- ✓ {milestone}")
-    
-    with tab4:
-        st.markdown("### 📥 Download Report")
-        
-        st.markdown("Download your complete VaultZero assessment report in JSON format.")
-        
-        # Prepare download
-        report_json = json.dumps(results, indent=2)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"vaultzero_report_{timestamp}.json"
-        
-        st.download_button(
-            label="📥 Download Complete Report (JSON)",
-            data=report_json,
-            file_name=filename,
-            mime="application/json",
-            use_container_width=True
-        )
-        
-        st.markdown("---")
-        st.markdown("**Report includes:**")
-        st.markdown("- Complete assessment results")
-        st.markdown("- Benchmark analysis")
-        st.markdown("- 6-month implementation roadmap")
-        st.markdown("- Cost estimates and timelines")
-    
-    # Reset button
-    if st.button("🔄 Start New Assessment", use_container_width=True):
-        st.session_state.assessment_complete = False
-        st.session_state.results = None
-        st.rerun()
+    st.markdown("---")
+    st.markdown("### 🔧 Troubleshooting")
+    st.markdown("""
+    **Common issues:**
+    1. Missing dependencies: `pip install langgraph langchain langchain-anthropic`
+    2. Agent import errors: Check `agents/` folder
+    3. Orchestrator errors: Check `orchestrator.py`
+    """)
 
 # Footer
 st.markdown("---")
-st.markdown("""
-<div style='text-align: center; color: #666;'>
-    <p>🔒 <strong>VaultZero</strong> | AI-Powered Zero Trust Assessment Platform</p>
-    <p>Built with LangGraph, and RAG | <a href="https://huggingface.co/datasets/Reply2susi/zero-trust-maturity-assessments" target="_blank">Dataset on Hugging Face</a></p>
-</div>
-""", unsafe_allow_html=True)
+st.caption("VaultZero v2.0 | AI-Powered Zero Trust Assessment | Powered by Claude & LangGraph")
