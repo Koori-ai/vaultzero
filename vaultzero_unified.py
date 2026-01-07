@@ -538,21 +538,33 @@ with tab2:
         
         st.markdown("---")
         
-        # Additional Details in Expanders
-        if result.get('zt_strengths'):
-            with st.expander("💪 **Key Strengths**", expanded=False):
-                for strength in result['zt_strengths']:
-                    st.markdown(f"✅ {strength}")
+        # Additional Details in Expanders - with flexible key checking
+        strengths = result.get('zt_strengths') or result.get('strengths') or []
+        gaps = result.get('zt_gaps') or result.get('gaps') or []
+        recommendations = result.get('zt_recommendations') or result.get('recommendations') or []
         
-        if result.get('zt_gaps'):
-            with st.expander("⚠️ **Areas for Improvement**", expanded=False):
-                for gap in result['zt_gaps']:
-                    st.markdown(f"🔸 {gap}")
-        
-        if result.get('zt_recommendations'):
-            with st.expander("🎯 **Recommendations**", expanded=False):
-                for rec in result['zt_recommendations']:
-                    st.markdown(f"📌 {rec}")
+        # Show detailed findings if available
+        if strengths or gaps or recommendations:
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if strengths:
+                    with st.expander("💪 **Key Strengths**", expanded=True):
+                        for strength in strengths:
+                            st.markdown(f"✅ {strength}")
+                
+                if gaps:
+                    with st.expander("⚠️ **Areas for Improvement**", expanded=True):
+                        for gap in gaps:
+                            st.markdown(f"🔸 {gap}")
+            
+            with col2:
+                if recommendations:
+                    with st.expander("🎯 **Recommendations**", expanded=True):
+                        for rec in recommendations:
+                            st.markdown(f"📌 {rec}")
+        else:
+            st.info("💡 Detailed findings available in the downloadable report below")
         
         st.markdown("---")
         
