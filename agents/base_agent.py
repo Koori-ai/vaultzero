@@ -5,6 +5,7 @@ Provides common functionality for all agents in the system
 
 from typing import Dict, Any, List, Optional
 from abc import ABC, abstractmethod
+from dotenv import load_dotenv
 import logging
 from datetime import datetime
 import os
@@ -38,7 +39,11 @@ class BaseAgent(ABC):
         self.name = name
         self.model = model
         self.temperature = temperature
+        self.api_key = api_key  # Store it!
         self.logger = self._setup_logger()
+        
+        # Load environment variables
+        load_dotenv()
         
         # Initialize Claude client
         self.llm = ChatAnthropic(

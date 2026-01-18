@@ -80,6 +80,13 @@ st.markdown("""
         border-radius: 0.5rem;
         margin: 1rem 0;
     }
+    .warning-box {
+        padding: 1rem;
+        background-color: #fff3cd;
+        border-left: 5px solid #ffc107;
+        border-radius: 0.5rem;
+        margin: 1rem 0;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -456,29 +463,48 @@ with tab1:
             st.rerun()
 
 # ============================================================================
-# TAB 2: VAULTZERO 2.0 - AI DOCUMENT ANALYSIS
+# TAB 2: VAULTZERO 2.0 - AI DOCUMENT ANALYSIS (ENHANCED UI)
 # ============================================================================
 with tab2:
     st.markdown("## 🤖 VaultZero 2.0 - AI-Powered Document Analysis")
     st.markdown("*Upload documents for automated Zero Trust assessment*")
     
     if not st.session_state.v2_assessment_complete:
+        # Enhanced file upload section
+        st.markdown('<div class="info-box">', unsafe_allow_html=True)
+        st.markdown("**📁 Supported Document Types:**")
+        st.markdown("PDF • Word (DOCX) • Excel (XLSX) • PowerPoint (PPTX) • Text (TXT)")
+        st.markdown('</div>', unsafe_allow_html=True)
+        
         uploaded_files = st.file_uploader(
-            "Upload documents (PDF, TXT, DOCX, XLSX, PPTX)",
+            "📤 Upload your security documentation",
             type=['pdf', 'txt', 'docx', 'xlsx', 'pptx'],
-            accept_multiple_files=True
+            accept_multiple_files=True,
+            help="Upload network diagrams, policies, configurations, or any security-related documents"
         )
         
         if uploaded_files:
-            st.success(f"✅ {len(uploaded_files)} file(s) uploaded")
+            st.markdown('<div class="success-box">', unsafe_allow_html=True)
+            st.markdown(f"**✅ {len(uploaded_files)} file(s) uploaded successfully**")
+            st.markdown('</div>', unsafe_allow_html=True)
             
-            for file in uploaded_files:
-                st.text(f"📄 {file.name} ({file.size:,} bytes)")
+            # Show uploaded files in a nice table
+            for idx, file in enumerate(uploaded_files, 1):
+                col1, col2, col3 = st.columns([1, 3, 2])
+                with col1:
+                    st.markdown(f"**{idx}.**")
+                with col2:
+                    st.markdown(f"📄 {file.name}")
+                with col3:
+                    st.markdown(f"*{file.size:,} bytes*")
         
-        if st.button("🚀 Run VaultZero 2.0 AI Assessment", disabled=not uploaded_files, use_container_width=True):
+        if st.button("🚀 Run VaultZero 2.0 AI Assessment", disabled=not uploaded_files, use_container_width=True, type="primary"):
             st.session_state.show_chat = False
             
-            with st.spinner("🤖 Running AI-powered analysis... 3-5 minutes..."):
+            # Progress indicator
+            progress_container = st.container()
+            
+            with st.spinner("🤖 Running multi-agent AI analysis..."):
                 try:
                     # Save files
                     temp_dir = tempfile.mkdtemp()
@@ -498,53 +524,77 @@ with tab2:
                     st.rerun()
                     
                 except Exception as e:
-                    st.error(f"❌ Error: {str(e)}")
+                    st.error(f"❌ Error during assessment: {str(e)}")
+                    st.exception(e)
     
     else:
         result = st.session_state.v2_results
         
-        st.markdown('<div class="success-box">✅ Assessment Complete!</div>', unsafe_allow_html=True)
+        # Success banner
+        st.markdown('<div class="success-box">', unsafe_allow_html=True)
+        st.markdown("### ✅ Assessment Complete!")
+        st.markdown("Your AI-powered Zero Trust assessment is ready for review.")
+        st.markdown('</div>', unsafe_allow_html=True)
         
+        # Main results section
         st.markdown("## 📊 Assessment Results")
         
-        # Top metrics
+        # Top-level metrics in colored boxes
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("Overall Maturity Score", f"{result.get('overall_maturity_score', 0):.1f}/5.0")
+            st.markdown('<div class="info-box" style="text-align: center;">', unsafe_allow_html=True)
+            st.markdown("**Overall Maturity Score**")
+            st.markdown(f"# {result.get('overall_maturity_score', 0):.1f}/5.0")
+            st.markdown('</div>', unsafe_allow_html=True)
+        
         with col2:
-            st.metric("Maturity Level", result.get('overall_maturity_level', 'N/A'))
+            st.markdown('<div class="info-box" style="text-align: center;">', unsafe_allow_html=True)
+            st.markdown("**Maturity Level**")
+            st.markdown(f"# {result.get('overall_maturity_level', 'N/A')}")
+            st.markdown('</div>', unsafe_allow_html=True)
+        
         with col3:
-            st.metric("Documents Analyzed", result.get('documents_analyzed', 0))
+            st.markdown('<div class="info-box" style="text-align: center;">', unsafe_allow_html=True)
+            st.markdown("**Documents Analyzed**")
+            st.markdown(f"# {result.get('documents_analyzed', 0)}")
+            st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown("---")
         
-        # Pillar Scores Section
+        # Pillar Scores Section with better formatting
         st.markdown("### 🎯 Zero Trust Pillar Scores")
         
         scores = result.get('zt_scores', {})
         if scores:
-            # Display in 2 columns for cleaner layout
+            # Display in 2 columns with progress bars
             col1, col2 = st.columns(2)
             pillar_list = list(scores.items())
             mid = len(pillar_list) // 2 + len(pillar_list) % 2
             
             with col1:
                 for pillar, score in pillar_list[:mid]:
-                    st.metric(pillar, f"{score}/5.0")
+                    st.markdown(f"**{pillar}**")
+                    st.progress(min(score / 5.0, 1.0))
+                    st.markdown(f"Score: {score}/5.0")
+                    st.markdown("")
             
             with col2:
                 for pillar, score in pillar_list[mid:]:
-                    st.metric(pillar, f"{score}/5.0")
+                    st.markdown(f"**{pillar}**")
+                    st.progress(min(score / 5.0, 1.0))
+                    st.markdown(f"Score: {score}/5.0")
+                    st.markdown("")
         
         st.markdown("---")
         
-        # Additional Details in Expanders - with flexible key checking
+        # Detailed findings in expandable sections
         strengths = result.get('zt_strengths') or result.get('strengths') or []
         gaps = result.get('zt_gaps') or result.get('gaps') or []
         recommendations = result.get('zt_recommendations') or result.get('recommendations') or []
         
-        # Show detailed findings if available
         if strengths or gaps or recommendations:
+            st.markdown("### 📋 Detailed Findings")
+            
             col1, col2 = st.columns(2)
             
             with col1:
@@ -552,39 +602,57 @@ with tab2:
                     with st.expander("💪 **Key Strengths**", expanded=True):
                         for strength in strengths:
                             st.markdown(f"✅ {strength}")
+                            st.markdown("")
                 
                 if gaps:
                     with st.expander("⚠️ **Areas for Improvement**", expanded=True):
                         for gap in gaps:
                             st.markdown(f"🔸 {gap}")
+                            st.markdown("")
             
             with col2:
                 if recommendations:
-                    with st.expander("🎯 **Recommendations**", expanded=True):
+                    with st.expander("🎯 **Priority Recommendations**", expanded=True):
                         for rec in recommendations:
                             st.markdown(f"📌 {rec}")
+                            st.markdown("")
         else:
-            st.info("💡 Detailed findings available in the downloadable report below")
+            st.markdown('<div class="warning-box">', unsafe_allow_html=True)
+            st.markdown("💡 **Detailed findings are available in the downloadable report below**")
+            st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown("---")
         
-        # Download Report
+        # Download section with enhanced styling
         if 'report_path' in result and os.path.exists(result['report_path']):
-            st.markdown("### 📥 Download Report")
-            with open(result['report_path'], 'rb') as f:
-                st.download_button(
-                    "📄 Download Professional Assessment Report (DOCX)",
-                    data=f.read(),
-                    file_name=os.path.basename(result['report_path']),
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    use_container_width=True
-                )
+            st.markdown("### 📥 Download Professional Report")
+            
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                with open(result['report_path'], 'rb') as f:
+                    st.download_button(
+                        "📄 Download Complete Assessment Report (DOCX)",
+                        data=f.read(),
+                        file_name=os.path.basename(result['report_path']),
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        use_container_width=True,
+                        type="primary"
+                    )
+            
+            st.markdown('<div class="info-box">', unsafe_allow_html=True)
+            st.markdown("**📋 Report Contents:**")
+            st.markdown("• Executive Summary • Pillar-by-Pillar Analysis • Security Strengths & Gaps • Compliance Mapping • Actionable Recommendations")
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        st.markdown("---")
         
         # New Assessment Button
-        if st.button("🔄 Start New Assessment", use_container_width=True, key="v2_new"):
-            st.session_state.v2_assessment_complete = False
-            st.session_state.v2_results = None
-            st.rerun()
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("🔄 Start New Assessment", use_container_width=True, key="v2_new"):
+                st.session_state.v2_assessment_complete = False
+                st.session_state.v2_results = None
+                st.rerun()
 
 # ============================================================================
 # TAB 3: KEVS DASHBOARD
@@ -607,6 +675,8 @@ with tab3:
         
         df = pd.DataFrame(kevs_data)
         
+        # Filters
+        st.markdown("### 🔍 Filter Vulnerabilities")
         col1, col2 = st.columns(2)
         with col1:
             vendor_filter = st.multiselect("🏢 Filter by Vendor", options=sorted(df['vendorProject'].unique()))
@@ -621,12 +691,14 @@ with tab3:
         
         st.markdown(f"### 📊 Showing {len(filtered_df)} vulnerabilities")
         
+        # Data table
         st.dataframe(
             filtered_df[['cveID', 'vendorProject', 'product', 'vulnerabilityName', 'dateAdded']],
             use_container_width=True,
             hide_index=True
         )
         
+        # Export button
         csv = filtered_df.to_csv(index=False)
         st.download_button(
             "📥 Export to CSV",

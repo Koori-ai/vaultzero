@@ -1,6 +1,42 @@
-﻿__pycache__/
-*.pyc
-venv/
-data/chroma_db/
+﻿# Environment variables - NEVER COMMIT API KEYS
 .env
-*_test_results.json
+.env.local
+.streamlit/secrets.toml
+
+# Generated assessment reports
+ZeroTrust_Assessment_*.docx
+~$*.docx
+
+# ChromaDB database files (auto-generated)
+data/chroma_db/
+
+# Python cache
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
+env/
+
+# Backup files
+*_BACKUP.py
+*_backup*.py
+*BEFORE_UI_POLISH.py
+
+# Old test files
+app1.py
+app_diagnostic.py
+app_v1_rag.py
+
+# Temporary files
+*.log
+Dockerfile1
+
+# Duplicate data files (keep only in data/ folder)
+/zt_synthetic_dataset_complete.json
+/ACME*.txt
+
+# OS files
+.DS_Store
+Thumbs.db

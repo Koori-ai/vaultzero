@@ -25,9 +25,15 @@ class ReportWriterAgent(BaseAgent):
     """
     
     def __init__(self, **kwargs):
+        # Get api_key from kwargs BEFORE calling super
+        api_key = kwargs.get('api_key')
+        
+        # DEBUG: Print what we're getting
+        print(f"DEBUG ReportWriter: api_key from kwargs = {api_key[:20] if api_key else 'None'}...")
+        
         super().__init__(
             name="ReportWriterAgent",
-            model="claude-sonnet-4-20250514",  # Default to Sonnet
+            model="claude-sonnet-4-20250514",
             **kwargs
         )
         
@@ -35,12 +41,17 @@ class ReportWriterAgent(BaseAgent):
         from langchain_anthropic import ChatAnthropic
         import os
         
+        # DEBUG: Check what we're passing
+        print(f"DEBUG ReportWriter: Passing to haiku_llm: {api_key[:20] if api_key else 'None'}...")
+        
         self.haiku_llm = ChatAnthropic(
             model="claude-haiku-4-5-20251001",
             temperature=0.0,
-            anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
+            anthropic_api_key=api_key,
             max_tokens=2048
         )
+        
+        print("DEBUG ReportWriter: haiku_llm initialized successfully")
     
     async def process(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -82,7 +93,7 @@ class ReportWriterAgent(BaseAgent):
         # Save report
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         report_filename = f"ZeroTrust_Assessment_{timestamp}.docx"
-        report_path = report_filename  # ← CORRECT (saves in current directory)
+        report_path = report_filename
         
         doc.save(report_path)
         
@@ -254,7 +265,7 @@ Write the executive summary."""
         strengths = state.get('zt_strengths', [])
         
         if strengths:
-            for strength in strengths[:10]:  # Top 10
+            for strength in strengths[:10]:
                 doc.add_paragraph(strength, style='List Bullet')
         else:
             doc.add_paragraph("No significant strengths identified.")
@@ -266,7 +277,7 @@ Write the executive summary."""
         gaps = state.get('zt_gaps', [])
         
         if gaps:
-            for gap in gaps[:15]:  # Top 15
+            for gap in gaps[:15]:
                 doc.add_paragraph(gap, style='List Bullet')
         else:
             doc.add_paragraph("No critical gaps identified.")
@@ -307,7 +318,7 @@ Write the executive summary."""
             controls_met = result.get('controls_met', [])
             if controls_met:
                 doc.add_paragraph("Controls Satisfied:", style='List Bullet')
-                for control in controls_met[:5]:  # Top 5
+                for control in controls_met[:5]:
                     doc.add_paragraph(control.replace(f"[{framework_id}] ", ""), 
                                     style='List Bullet 2')
             
@@ -315,7 +326,7 @@ Write the executive summary."""
             framework_gaps = result.get('gaps', [])
             if framework_gaps:
                 doc.add_paragraph("Gaps:", style='List Bullet')
-                for gap in framework_gaps[:5]:  # Top 5
+                for gap in framework_gaps[:5]:
                     doc.add_paragraph(gap.replace(f"[{framework_id}] ", ""), 
                                     style='List Bullet 2')
             
@@ -340,7 +351,7 @@ Write the executive summary."""
                             "based on impact and feasibility:")
             doc.add_paragraph()
             
-            for i, rec in enumerate(recommendations[:20], 1):  # Top 20
+            for i, rec in enumerate(recommendations[:20], 1):
                 doc.add_paragraph(f"{i}. {rec}", style='List Number')
         else:
             doc.add_paragraph("No specific recommendations generated.")
