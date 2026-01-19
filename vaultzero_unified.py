@@ -183,6 +183,8 @@ if 'chat_messages' not in st.session_state:
     st.session_state.chat_messages = []
 if 'show_chat' not in st.session_state:
     st.session_state.show_chat = False
+if 'assessment_running' not in st.session_state:
+    st.session_state.assessment_running = False
 
 # Header
 st.markdown('<div class="main-header">🔒 VaultZero Platform</div>', unsafe_allow_html=True)
@@ -203,7 +205,7 @@ with st.sidebar:
     **VaultZero 1.0**
     - Manual questionnaire
     - RAG-powered benchmarking
-    - 6-month roadmap
+    - 2-year roadmap
     
     **VaultZero 2.0**
     - AI document analysis
@@ -225,14 +227,14 @@ with st.sidebar:
     - Automated Professional Reports
     
     **💪 Key Features:**
-    - Advanced Multi-Agent Analysis
+    - 5-Agent AI Architecture
     - RAG-Based Comparisons
     - Live Vulnerability Tracking
-    - Comprehensive Roadmaps
+    - 2-Year Phased Roadmaps
     """)
 
-# AI Assistant Dialog
-if st.session_state.show_chat:
+# AI Assistant Dialog - FIXED: Only show if explicitly requested and not running assessment
+if st.session_state.show_chat and not st.session_state.get('assessment_running', False):
     @st.dialog("💬 AI Assistant", width="large")
     def show_chat_dialog():
         st.markdown("### Ask me about Zero Trust!")
@@ -377,7 +379,9 @@ with tab1:
                 if not system_description or not all([identity_answer, devices_answer, networks_answer, applications_answer, data_answer]):
                     st.error("⚠️ Please fill in all fields!")
                 else:
+                    # FIXED: Set flags to prevent AI Assistant popup
                     st.session_state.show_chat = False
+                    st.session_state.assessment_running = True
                     
                     user_answers = {
                         "identity": identity_answer,
@@ -387,7 +391,7 @@ with tab1:
                         "data": data_answer
                     }
                     
-                    with st.spinner("🤖 Running RAG-powered assessment... 60-90 seconds..."):
+                    with st.spinner("🤖 Running 5-agent assessment... This may take 2-3 minutes..."):
                         try:
                             rag = initialize_rag()
                             orchestrator = VaultZeroOrchestratorV1(rag_system=rag)
@@ -395,9 +399,13 @@ with tab1:
                             
                             st.session_state.v1_results = results
                             st.session_state.v1_assessment_complete = True
+                            # FIXED: Clear assessment running flag
+                            st.session_state.assessment_running = False
                             st.rerun()
                         except Exception as e:
+                            st.session_state.assessment_running = False
                             st.error(f"❌ Error: {str(e)}")
+                            st.exception(e)
     
     else:
         results = st.session_state.v1_results
@@ -407,26 +415,29 @@ with tab1:
         st.markdown("## 📊 Executive Summary")
         summary = results['summary']
         
+        # Updated metrics display
         col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
-            st.metric("Current Maturity", summary['current_maturity'])
+            st.metric("Current Maturity", summary.get('current_maturity', 'N/A'))
         with col2:
-            st.metric("Current Score", f"{summary['current_score']:.1f}/4.0")
+            st.metric("Current Score", f"{summary.get('current_score', 0):.1f}/4.0")
         with col3:
-            st.metric("Peer Percentile", f"{summary['peer_percentile']}th")
+            st.metric("Peer Percentile", f"{summary.get('peer_percentile', 0)}th")
         with col4:
-            st.metric("6-Month Target", summary['target_maturity'])
+            # Show 24-month target if available, otherwise 6-month
+            target = summary.get('target_maturity_24_months', summary.get('target_maturity', 'N/A'))
+            st.metric("24-Month Target", target)
         with col5:
-            st.metric("Investment", summary['investment_range'].split(' - ')[0], summary['investment_range'].split(' - ')[1])
+            st.metric("Investment", summary.get('investment_range', 'N/A').split(' - ')[0] if ' - ' in summary.get('investment_range', '') else summary.get('investment_range', 'N/A'))
         
-        subtab1, subtab2, subtab3, subtab4 = st.tabs(["📋 Assessment", "📊 Benchmark", "🗺️ Roadmap", "📥 Download"])
+        subtab1, subtab2, subtab3, subtab4, subtab5 = st.tabs(["📋 Assessment", "📊 Benchmark", "💡 Recommendations", "🗺️ Roadmap", "📥 Download"])
         
         with subtab1:
             st.markdown("### 🔐 Pillar Results")
-            assessment = results['assessment']
-            for pillar_name, pillar_data in assessment['pillars'].items():
-                with st.expander(f"**{pillar_name.upper()}** - {pillar_data['maturity_level']} ({pillar_data['score']:.1f}/4.0)"):
-                    st.markdown(f"**Findings:** {pillar_data['findings']}")
+            assessment = results.get('assessment', {})
+            for pillar_name, pillar_data in assessment.get('pillars', {}).items():
+                with st.expander(f"**{pillar_name.upper()}** - {pillar_data.get('maturity_level', 'N/A')} ({pillar_data.get('score', 0):.1f}/4.0)"):
+                    st.markdown(f"**Findings:** {pillar_data.get('findings', 'N/A')}")
                     if pillar_data.get('strengths'):
                         st.markdown("**✅ Strengths:**")
                         for s in pillar_data['strengths']:
@@ -438,24 +449,250 @@ with tab1:
         
         with subtab2:
             st.markdown("### 📊 Benchmark Analysis")
-            benchmark = results['benchmark']
-            st.markdown(f"**Competitive Position:** {benchmark['competitive_position']}")
+            benchmark = results.get('benchmark', {})
+            st.markdown(f"**Competitive Position:** {benchmark.get('competitive_position', 'N/A')}")
+            
+            if benchmark.get('pillar_rankings'):
+                st.markdown("#### Pillar Rankings")
+                for pillar, ranking in benchmark['pillar_rankings'].items():
+                    st.markdown(f"- **{pillar.upper()}:** {ranking.get('percentile', 0)}th percentile - {ranking.get('vs_peers', 'N/A')}")
         
         with subtab3:
-            st.markdown("### 🗺️ 6-Month Roadmap")
-            roadmap = results['roadmap']
-            st.markdown(f"**Summary:** {roadmap['executive_summary']}")
+            st.markdown("### 💡 Prioritized Recommendations")
+            recommendations = results.get('recommendations', {})
+            
+            if recommendations.get('critical_gaps'):
+                st.markdown("#### 🚨 Critical Gaps")
+                for gap in recommendations['critical_gaps'][:5]:
+                    st.markdown(f"**{gap.get('pillar', 'N/A').upper()}:** {gap.get('gap', 'N/A')}")
+            
+            if recommendations.get('prioritized_recommendations'):
+                st.markdown("#### 🎯 Top Recommendations")
+                for rec in recommendations['prioritized_recommendations'][:10]:
+                    quick_win = "⚡ QUICK WIN" if rec.get('quick_win') else ""
+                    st.markdown(f"**#{rec.get('rank', 0)} {quick_win}:** {rec.get('recommendation', 'N/A')}")
         
+        # ==================== TAB 4: ROADMAP (UPDATED FOR 4 PHASES) ====================
         with subtab4:
+            st.markdown("### 🗺️ 2-Year Implementation Roadmap")
+            
+            if 'roadmap' in results and results['roadmap']:
+                roadmap = results['roadmap']
+                
+                # Overview Section
+                st.markdown("#### 📊 Roadmap Overview")
+                st.markdown("""
+                This roadmap provides a **4-phase, 24-month implementation plan** based on your Zero Trust 
+                assessment and prioritized recommendations. Each phase builds upon the previous one to 
+                systematically improve your security posture.
+                """)
+                
+                # Phase Summary Cards
+                col1, col2, col3, col4 = st.columns(4)
+                
+                phases = roadmap.get('phases', [])
+                if len(phases) >= 4:
+                    with col1:
+                        st.metric("Phase 1", phases[0]['timeframe'], phases[0]['name'])
+                    with col2:
+                        st.metric("Phase 2", phases[1]['timeframe'], phases[1]['name'])
+                    with col3:
+                        st.metric("Phase 3", phases[2]['timeframe'], phases[2]['name'])
+                    with col4:
+                        st.metric("Phase 4", phases[3]['timeframe'], phases[3]['name'])
+                
+                st.markdown("---")
+                
+                # Phase 1: Immediate Quick Wins (0-3 months)
+                with st.expander("🚀 **PHASE 1: Immediate Quick Wins** (Months 0-3)", expanded=True):
+                    if len(phases) > 0:
+                        phase = phases[0]
+                        st.markdown(f"**Focus:** {phase['focus']}")
+                        st.markdown(f"**Target Maturity:** {phase['maturity_target']}")
+                        st.markdown(f"**Initiatives:** {phase['initiatives_count']} key projects")
+                        
+                        investment = roadmap.get('total_investment', {})
+                        st.markdown(f"**💰 Estimated Investment:** {investment.get('phase_1', 'N/A')}")
+                        
+                        st.markdown("""
+                        **Key Objectives:**
+                        - Address critical security gaps with immediate impact
+                        - Achieve quick compliance wins
+                        - Build organizational momentum
+                        - Establish baseline security controls
+                        """)
+                
+                # Phase 2: Foundation Building (3-6 months)
+                with st.expander("🏗️ **PHASE 2: Foundation Building** (Months 3-6)", expanded=False):
+                    if len(phases) > 1:
+                        phase = phases[1]
+                        st.markdown(f"**Focus:** {phase['focus']}")
+                        st.markdown(f"**Target Maturity:** {phase['maturity_target']}")
+                        st.markdown(f"**Initiatives:** {phase['initiatives_count']} key projects")
+                        
+                        investment = roadmap.get('total_investment', {})
+                        st.markdown(f"**💰 Estimated Investment:** {investment.get('phase_2', 'N/A')}")
+                        
+                        st.markdown("""
+                        **Key Objectives:**
+                        - Implement core infrastructure improvements
+                        - Deploy critical security capabilities
+                        - Establish foundational monitoring and logging
+                        - Build upon Phase 1 achievements
+                        """)
+                
+                # Phase 3: Strategic Capabilities (6-12 months)
+                with st.expander("🎯 **PHASE 3: Strategic Capabilities** (Months 6-12)", expanded=False):
+                    if len(phases) > 2:
+                        phase = phases[2]
+                        st.markdown(f"**Focus:** {phase['focus']}")
+                        st.markdown(f"**Target Maturity:** {phase['maturity_target']}")
+                        st.markdown(f"**Initiatives:** {phase['initiatives_count']} key projects")
+                        
+                        investment = roadmap.get('total_investment', {})
+                        st.markdown(f"**💰 Estimated Investment:** {investment.get('phase_3', 'N/A')}")
+                        
+                        st.markdown("""
+                        **Key Objectives:**
+                        - Deploy major security transformations
+                        - Implement advanced Zero Trust features
+                        - Achieve strategic architectural goals
+                        - Scale security across the enterprise
+                        """)
+                
+                # Phase 4: Optimization & Maturity (12-24 months)
+                with st.expander("⚡ **PHASE 4: Optimization & Maturity** (Months 12-24)", expanded=False):
+                    if len(phases) > 3:
+                        phase = phases[3]
+                        st.markdown(f"**Focus:** {phase['focus']}")
+                        st.markdown(f"**Target Maturity:** {phase['maturity_target']}")
+                        st.markdown(f"**Initiatives:** {phase['initiatives_count']} key projects")
+                        
+                        investment = roadmap.get('total_investment', {})
+                        st.markdown(f"**💰 Estimated Investment:** {investment.get('phase_4', 'N/A')}")
+                        
+                        st.markdown("""
+                        **Key Objectives:**
+                        - Fine-tune security controls and policies
+                        - Implement advanced automation
+                        - Deploy AI/ML security capabilities
+                        - Achieve 4.0+ maturity level
+                        """)
+                
+                st.markdown("---")
+                
+                # Total Investment Summary
+                st.markdown("#### 💰 Total Investment Summary (24 Months)")
+                investment = roadmap.get('total_investment', {})
+                
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    st.markdown(f"""
+                    - **Phase 1 (0-3 months):** {investment.get('phase_1', 'N/A')}
+                    - **Phase 2 (3-6 months):** {investment.get('phase_2', 'N/A')}
+                    - **Phase 3 (6-12 months):** {investment.get('phase_3', 'N/A')}
+                    - **Phase 4 (12-24 months):** {investment.get('phase_4', 'N/A')}
+                    """)
+                with col2:
+                    st.info(f"**TOTAL:** {investment.get('total_24_months', 'N/A')}")
+                
+                st.markdown("---")
+                
+                # Expected Outcomes
+                st.markdown("#### 🎯 Expected Outcomes (End of 24 Months)")
+                
+                outcomes = roadmap.get('expected_outcomes', {})
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("**Maturity Improvements:**")
+                    for outcome in outcomes.get('maturity_improvements', []):
+                        st.markdown(f"✅ {outcome}")
+                    
+                    st.markdown("\n**Compliance Achievements:**")
+                    for outcome in outcomes.get('compliance_achievements', []):
+                        st.markdown(f"✅ {outcome}")
+                
+                with col2:
+                    st.markdown("**Security Posture:**")
+                    for outcome in outcomes.get('security_posture', []):
+                        st.markdown(f"✅ {outcome}")
+                    
+                    st.markdown("\n**Operational Benefits:**")
+                    for outcome in outcomes.get('operational_benefits', []):
+                        st.markdown(f"✅ {outcome}")
+                
+                st.markdown("---")
+                
+                # Detailed Roadmap Text
+                with st.expander("📄 **Detailed Implementation Plan** (Full AI-Generated Roadmap)", expanded=False):
+                    if 'roadmap_text' in roadmap:
+                        st.markdown(roadmap['roadmap_text'])
+                    else:
+                        st.info("Detailed roadmap text not available.")
+                
+            else:
+                st.info("👈 Run an assessment first to generate a roadmap!")
+                st.markdown("""
+                The roadmap will provide:
+                - **4-phase implementation plan** spanning 24 months
+                - **Quarterly milestones** for each phase
+                - **Investment estimates** for staff time and technology
+                - **Expected maturity improvements** and compliance achievements
+                """)
+
+        with subtab5:
+            st.markdown("### 📥 Download Assessment Report")
+            
+            # Professional DOCX Report (Primary)
+            if 'report_filename' in results and os.path.exists(results['report_filename']):
+                st.markdown("#### 📄 Professional Report (Recommended)")
+                st.markdown("**Complete assessment with executive summary, detailed analysis, benchmark comparison, recommendations, and 2-year roadmap.**")
+                
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    with open(results['report_filename'], 'rb') as f:
+                        st.download_button(
+                            "📄 Download Professional Report (DOCX)",
+                            data=f.read(),
+                            file_name=os.path.basename(results['report_filename']),
+                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                            use_container_width=True,
+                            type="primary"
+                        )
+                
+                st.markdown('<div class="info-box">', unsafe_allow_html=True)
+                st.markdown("""
+                **📋 Report Contents:**
+                - ✅ Executive Summary with key metrics
+                - ✅ Detailed pillar-by-pillar assessment
+                - ✅ Peer benchmark analysis
+                - ✅ Prioritized recommendations (what to fix)
+                - ✅ 2-year phased roadmap (when and how to fix)
+                - ✅ Cost estimates and resource requirements
+                - ✅ Risk mitigation strategies
+                """)
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+                st.markdown("---")
+            
+            # JSON Export (Secondary - for power users)
+            st.markdown("#### 🔧 Raw Data Export (Optional)")
+            st.markdown("*For technical analysis or integration with other tools*")
+            
             report_json = json.dumps(results, indent=2)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            st.download_button(
-                "📥 Download Report (JSON)",
-                data=report_json,
-                file_name=f"vaultzero_v1_report_{timestamp}.json",
-                mime="application/json",
-                use_container_width=True
-            )
+            
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                st.download_button(
+                    "📊 Export Raw Data (JSON)",
+                    data=report_json,
+                    file_name=f"vaultzero_v1_data_{timestamp}.json",
+                    mime="application/json",
+                    use_container_width=True
+                )
         
         if st.button("🔄 New Assessment", use_container_width=True):
             st.session_state.v1_assessment_complete = False
@@ -499,7 +736,9 @@ with tab2:
                     st.markdown(f"*{file.size:,} bytes*")
         
         if st.button("🚀 Run VaultZero 2.0 AI Assessment", disabled=not uploaded_files, use_container_width=True, type="primary"):
+            # FIXED: Set flags to prevent AI Assistant popup
             st.session_state.show_chat = False
+            st.session_state.assessment_running = True
             
             # Progress indicator
             progress_container = st.container()
@@ -521,9 +760,12 @@ with tab2:
                     
                     st.session_state.v2_results = result
                     st.session_state.v2_assessment_complete = True
+                    # FIXED: Clear assessment running flag
+                    st.session_state.assessment_running = False
                     st.rerun()
                     
                 except Exception as e:
+                    st.session_state.assessment_running = False
                     st.error(f"❌ Error during assessment: {str(e)}")
                     st.exception(e)
     
@@ -715,6 +957,6 @@ st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666;'>
     <p>🔒 <strong>VaultZero Platform</strong> | Unified Zero Trust Assessment & Threat Intelligence</p>
-    <p>VaultZero 1.0 (RAG) | VaultZero 2.0 (AI Docs) | KEVS Dashboard</p>
+    <p>VaultZero 1.0 (5-Agent RAG) | VaultZero 2.0 (AI Docs) | KEVS Dashboard</p>
 </div>
 """, unsafe_allow_html=True)

@@ -1,5 +1,7 @@
 """
-Recommendation Agent - Generates prioritized 6-month Zero Trust implementation roadmap
+Recommendation Agent - Identifies gaps and prioritizes improvements
+Now focused ONLY on recommendations - roadmap is separate agent
+UPDATED: Added risk_level and impact_if_not_fixed for report compatibility
 """
 
 import os
@@ -20,13 +22,13 @@ class RecommendationAgent:
         self.client = Anthropic(api_key=api_key)
         self.model = "claude-sonnet-4-20250514"
     
-    def generate_roadmap(self, 
-                        system_description: str,
-                        assessment_results: dict,
-                        benchmark_results: dict):
-        """Generate 6-month implementation roadmap with priorities and costs"""
+    def generate_recommendations(self, 
+                                system_description: str,
+                                assessment_results: dict,
+                                benchmark_results: dict):
+        """Generate prioritized recommendations based on gaps and benchmark position"""
         
-        prompt = f"""You are a Zero Trust implementation strategist. Create a detailed 6-month roadmap.
+        prompt = f"""You are a Zero Trust security expert. Analyze the assessment and benchmark results to identify gaps and prioritize improvements.
 
 SYSTEM CONTEXT:
 {system_description}
@@ -37,199 +39,181 @@ CURRENT STATE (Assessment):
 BENCHMARK POSITION:
 {json.dumps(benchmark_results, indent=2)}
 
-Generate a comprehensive 6-month implementation roadmap in JSON format:
+Generate comprehensive recommendations in JSON format:
 
 {{
-    "executive_summary": "2-3 sentence overview of strategy",
-    "quick_wins": [
+    "critical_gaps": [
         {{
-            "initiative": "Specific quick win",
-            "timeline": "Weeks 1-4",
-            "effort": "Low/Medium/High",
-            "impact": "Low/Medium/High",
-            "cost_estimate": "$X - $Y",
-            "why_now": "Why this is urgent",
-            "success_metrics": ["Measurable outcome 1", "Measurable outcome 2"]
+            "pillar": "Which pillar",
+            "gap": "Specific gap identified",
+            "current_state": "What exists now",
+            "desired_state": "What should exist",
+            "business_impact": "Why this matters",
+            "impact_if_not_fixed": "Concrete consequences if left unaddressed",
+            "priority": "Critical/High/Medium/Low",
+            "risk_level": "Critical/High/Medium/Low",
+            "effort_estimate": "Low/Medium/High"
         }}
     ],
-    "medium_term": [
+    "strengths_to_maintain": [
         {{
-            "initiative": "Medium-term improvement",
-            "timeline": "Months 3-4",
-            "effort": "Low/Medium/High",
-            "impact": "Low/Medium/High",
-            "cost_estimate": "$X - $Y",
-            "dependencies": ["What must be done first"],
-            "success_metrics": ["Measurable outcome 1"]
+            "pillar": "Which pillar",
+            "strength": "What's working well",
+            "why_important": "Why to keep this"
         }}
     ],
-    "long_term": [
+    "prioritized_recommendations": [
         {{
-            "initiative": "Transformational change",
-            "timeline": "Months 5-6",
-            "effort": "Low/Medium/High",
-            "impact": "Low/Medium/High",
-            "cost_estimate": "$X - $Y",
-            "dependencies": ["What must be done first"],
-            "success_metrics": ["Measurable outcome 1"]
+            "rank": 1,
+            "priority": "Critical/High/Medium/Low",
+            "recommendation": "Specific actionable recommendation",
+            "title": "Short title for the recommendation",
+            "pillar": "Which pillar",
+            "rationale": "Why this is priority",
+            "expected_impact": "What will improve",
+            "quick_win": true/false,
+            "effort_estimate": "Low/Medium/High",
+            "impact_score": 1-10,
+            "cost_estimate": "$XX,000 - $XX,000 or Low/Medium/High",
+            "success_criteria": ["Measurable outcome 1", "Measurable outcome 2"]
         }}
     ],
-    "month_by_month": {{
-        "month_1": {{
-            "focus": "Primary focus area",
-            "initiatives": ["Initiative 1", "Initiative 2"],
-            "milestones": ["Milestone 1", "Milestone 2"]
+    "pillar_priorities": {{
+        "identity": {{
+            "priority_level": "Critical/High/Medium/Low",
+            "key_improvements": ["Improvement 1", "Improvement 2"],
+            "rationale": "Why this pillar needs focus"
         }},
-        "month_2": {{"focus": "...", "initiatives": [], "milestones": []}},
-        "month_3": {{"focus": "...", "initiatives": [], "milestones": []}},
-        "month_4": {{"focus": "...", "initiatives": [], "milestones": []}},
-        "month_5": {{"focus": "...", "initiatives": [], "milestones": []}},
-        "month_6": {{"focus": "...", "initiatives": [], "milestones": []}}
+        "devices": {{"priority_level": "...", "key_improvements": [], "rationale": "..."}},
+        "networks": {{"priority_level": "...", "key_improvements": [], "rationale": "..."}},
+        "applications": {{"priority_level": "...", "key_improvements": [], "rationale": "..."}},
+        "data": {{"priority_level": "...", "key_improvements": [], "rationale": "..."}}
     }},
-    "total_cost_estimate": {{
-        "minimum": "$X",
-        "maximum": "$Y",
-        "breakdown": {{
-            "identity": "$X",
-            "devices": "$X",
-            "networks": "$X",
-            "applications": "$X",
-            "data": "$X"
-        }}
+    "investment_priorities": {{
+        "high_roi_quick_wins": ["Initiative 1", "Initiative 2"],
+        "strategic_investments": ["Major investment 1", "Major investment 2"],
+        "cost_optimization_opportunities": ["Cost saving 1", "Cost saving 2"]
     }},
-    "risk_mitigation": [
-        {{
-            "risk": "Potential risk",
-            "mitigation": "How to address it",
-            "owner": "Who should own this"
-        }}
-    ],
-    "expected_outcomes": {{
-        "6_month_maturity_target": "Target overall maturity level",
-        "pillar_improvements": {{
-            "identity": "Current -> Target",
-            "devices": "Current -> Target",
-            "networks": "Current -> Target",
-            "applications": "Current -> Target",
-            "data": "Current -> Target"
-        }},
-        "percentile_improvement": "Expected percentile change vs peers"
+    "summary": {{
+        "total_gaps_identified": 0,
+        "critical_gaps": 0,
+        "high_priority_gaps": 0,
+        "areas_above_peer_average": ["Pillar 1"],
+        "areas_below_peer_average": ["Pillar 2"],
+        "overall_priority_focus": "Primary area needing immediate attention"
     }}
 }}
 
-CRITICAL: Prioritize based on GAPS identified. Focus on areas below peer average. Be specific and actionable."""
+CRITICAL: 
+- Prioritize based on GAPS identified in benchmark
+- Focus on areas below peer average
+- Be specific and actionable
+- Identify quick wins vs strategic investments
+- Consider business impact and implementation effort
+- Include both risk_level AND impact_if_not_fixed for each critical gap
+- Include title, impact_score, and cost_estimate for each recommendation"""
 
-        print("\n🗺️  Generating implementation roadmap with Claude API...")
+        print("\n💡 Generating prioritized recommendations with Claude API...")
         
         response = self.client.messages.create(
             model=self.model,
-            max_tokens=6000,
+            max_tokens=4000,
             messages=[{"role": "user", "content": prompt}]
         )
         
         response_text = response.content[0].text
         
+        # Extract JSON from response
         if "```json" in response_text:
             response_text = response_text.split("```json")[1].split("```")[0].strip()
         elif "```" in response_text:
             response_text = response_text.split("```")[1].split("```")[0].strip()
         
-        roadmap = json.loads(response_text)
-        return roadmap
+        recommendations = json.loads(response_text)
+        return recommendations
     
-    def display_roadmap(self, roadmap: dict):
-        """Display roadmap in readable format"""
+    def display_recommendations(self, recommendations: dict):
+        """Display recommendations in readable format"""
         print("\n" + "="*70)
-        print("🗺️  6-MONTH ZERO TRUST IMPLEMENTATION ROADMAP")
+        print("💡 PRIORITIZED RECOMMENDATIONS")
         print("="*70)
         
-        print(f"\n📋 EXECUTIVE SUMMARY:")
-        print(f"   {roadmap['executive_summary']}")
-        
-        print(f"\n💰 TOTAL INVESTMENT: {roadmap['total_cost_estimate']['minimum']} - {roadmap['total_cost_estimate']['maximum']}")
+        summary = recommendations['summary']
+        print(f"\n📊 SUMMARY:")
+        print(f"   Total Gaps Identified: {summary['total_gaps_identified']}")
+        print(f"   Critical Gaps: {summary['critical_gaps']}")
+        print(f"   High Priority Gaps: {summary['high_priority_gaps']}")
+        print(f"   Overall Focus: {summary['overall_priority_focus']}")
         
         print("\n" + "="*70)
-        print("⚡ QUICK WINS (Months 1-2)")
+        print("🔴 CRITICAL GAPS (Immediate Attention Required)")
         print("="*70)
-        for qw in roadmap['quick_wins']:
-            print(f"\n✅ {qw['initiative']}")
-            print(f"   Timeline: {qw['timeline']}")
-            print(f"   Effort: {qw['effort']} | Impact: {qw['impact']}")
-            print(f"   Cost: {qw['cost_estimate']}")
-            print(f"   Why Now: {qw['why_now']}")
-            print(f"   Success Metrics:")
-            for metric in qw['success_metrics']:
-                print(f"      • {metric}")
+        for gap in recommendations['critical_gaps']:
+            print(f"\n❗ [{gap['pillar'].upper()}] {gap['gap']}")
+            print(f"   Current: {gap['current_state']}")
+            print(f"   Desired: {gap['desired_state']}")
+            print(f"   Impact: {gap['business_impact']}")
+            print(f"   Risk: {gap.get('risk_level', gap.get('priority', 'N/A'))}")
+            print(f"   Priority: {gap['priority']} | Effort: {gap['effort_estimate']}")
         
         print("\n" + "="*70)
-        print("🎯 MEDIUM-TERM INITIATIVES (Months 3-4)")
+        print("✅ STRENGTHS TO MAINTAIN")
         print("="*70)
-        for mt in roadmap['medium_term']:
-            print(f"\n📊 {mt['initiative']}")
-            print(f"   Timeline: {mt['timeline']}")
-            print(f"   Effort: {mt['effort']} | Impact: {mt['impact']}")
-            print(f"   Cost: {mt['cost_estimate']}")
-            if 'dependencies' in mt:
-                print(f"   Dependencies: {', '.join(mt['dependencies'])}")
-            print(f"   Success Metrics:")
-            for metric in mt['success_metrics']:
-                print(f"      • {metric}")
+        for strength in recommendations['strengths_to_maintain']:
+            print(f"\n💪 [{strength['pillar'].upper()}] {strength['strength']}")
+            print(f"   Why: {strength['why_important']}")
         
         print("\n" + "="*70)
-        print("🚀 TRANSFORMATIONAL INITIATIVES (Months 5-6)")
+        print("🎯 TOP 10 PRIORITIZED RECOMMENDATIONS")
         print("="*70)
-        for lt in roadmap['long_term']:
-            print(f"\n🌟 {lt['initiative']}")
-            print(f"   Timeline: {lt['timeline']}")
-            print(f"   Effort: {lt['effort']} | Impact: {lt['impact']}")
-            print(f"   Cost: {lt['cost_estimate']}")
-            if 'dependencies' in lt:
-                print(f"   Dependencies: {', '.join(lt['dependencies'])}")
-            print(f"   Success Metrics:")
-            for metric in lt['success_metrics']:
-                print(f"      • {metric}")
+        for rec in recommendations['prioritized_recommendations'][:10]:
+            quick_win = "⚡ QUICK WIN" if rec.get('quick_win') else ""
+            rank = rec.get('rank', 0)
+            print(f"\n#{rank} {quick_win}")
+            print(f"   {rec['recommendation']}")
+            print(f"   Pillar: {rec['pillar']} | Effort: {rec['effort_estimate']} | Impact: {rec.get('impact_score', 'N/A')}/10")
+            print(f"   Rationale: {rec['rationale']}")
+            if rec.get('success_criteria'):
+                print(f"   Success Criteria:")
+                for criterion in rec['success_criteria']:
+                    print(f"      ✓ {criterion}")
         
         print("\n" + "="*70)
-        print("📅 MONTH-BY-MONTH TIMELINE")
+        print("📊 PILLAR PRIORITIES")
         print("="*70)
-        for month_key, month_data in roadmap['month_by_month'].items():
-            month_num = month_key.split('_')[1]
-            print(f"\n📆 MONTH {month_num}: {month_data['focus']}")
-            print("   Initiatives:")
-            for init in month_data['initiatives']:
-                print(f"      • {init}")
-            print("   Milestones:")
-            for milestone in month_data['milestones']:
-                print(f"      ✓ {milestone}")
+        for pillar, details in recommendations['pillar_priorities'].items():
+            print(f"\n🔹 {pillar.upper()}: {details['priority_level']}")
+            print(f"   Rationale: {details['rationale']}")
+            print("   Key Improvements:")
+            for improvement in details['key_improvements']:
+                print(f"      • {improvement}")
         
         print("\n" + "="*70)
-        print("🎯 EXPECTED OUTCOMES (End of Month 6)")
+        print("💰 INVESTMENT GUIDANCE")
         print("="*70)
-        print(f"\n   Target Maturity: {roadmap['expected_outcomes']['6_month_maturity_target']}")
-        print(f"   Percentile Improvement: {roadmap['expected_outcomes']['percentile_improvement']}")
-        print("\n   Pillar Improvements:")
-        for pillar, improvement in roadmap['expected_outcomes']['pillar_improvements'].items():
-            print(f"      • {pillar.title()}: {improvement}")
+        print("\n⚡ High ROI Quick Wins:")
+        for qw in recommendations['investment_priorities']['high_roi_quick_wins']:
+            print(f"   • {qw}")
+        
+        print("\n🎯 Strategic Investments:")
+        for si in recommendations['investment_priorities']['strategic_investments']:
+            print(f"   • {si}")
+        
+        print("\n💵 Cost Optimization:")
+        for co in recommendations['investment_priorities']['cost_optimization_opportunities']:
+            print(f"   • {co}")
         
         print("\n" + "="*70)
-        print("⚠️  RISK MITIGATION STRATEGIES")
-        print("="*70)
-        for risk in roadmap['risk_mitigation']:
-            print(f"\n   Risk: {risk['risk']}")
-            print(f"   Mitigation: {risk['mitigation']}")
-            print(f"   Owner: {risk['owner']}")
-        
-        print("\n" + "="*70)
-        
+    
     def run_recommendation(self, system_description: str, assessment_results: dict, benchmark_results: dict):
         """Complete recommendation workflow"""
         print("\n" + "="*70)
-        print("🎯 VAULTZERO RECOMMENDATION AGENT")
+        print("💡 VAULTZERO RECOMMENDATION AGENT")
         print("="*70)
         
-        roadmap = self.generate_roadmap(system_description, assessment_results, benchmark_results)
-        self.display_roadmap(roadmap)
-        return roadmap
+        recommendations = self.generate_recommendations(system_description, assessment_results, benchmark_results)
+        self.display_recommendations(recommendations)
+        return recommendations
 
 
 if __name__ == "__main__":
@@ -238,6 +222,8 @@ if __name__ == "__main__":
     
     test_assessment = {
         "system_name": "Enterprise Cloud Application",
+        "overall_score": 2.0,
+        "overall_maturity_level": "INITIAL",
         "pillars": {
             "identity": {"maturity_level": "INITIAL", "score": 2},
             "devices": {"maturity_level": "ADVANCED", "score": 3},
@@ -261,9 +247,9 @@ if __name__ == "__main__":
     }
     
     agent = RecommendationAgent()
-    roadmap = agent.run_recommendation(test_system, test_assessment, test_benchmark)
+    recommendations = agent.run_recommendation(test_system, test_assessment, test_benchmark)
     
-    with open("roadmap_test_results.json", "w") as f:
-        json.dump(roadmap, f, indent=2)
+    with open("recommendation_test_results.json", "w") as f:
+        json.dump(recommendations, f, indent=2)
     
-    print("\n✅ Roadmap saved to roadmap_test_results.json")
+    print("\n✅ Recommendations saved to recommendation_test_results.json")

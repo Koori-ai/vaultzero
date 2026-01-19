@@ -40,3 +40,13 @@ Dockerfile1
 # OS files
 .DS_Store
 Thumbs.db
+
+# Test outputs and backups
+*.docx
+*_test_results.json
+*_BEFORE_FIX.py
+*_OLD*.py
+backups_jan*/
+.coverage
+data/
+sample_documents/
