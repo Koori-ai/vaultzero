@@ -1,0 +1,283 @@
+ACME CORPORATION
+INFORMATION SECURITY POLICY
+Version 2.1 - January 2026
+
+EXECUTIVE SUMMARY
+
+This document outlines ACME Corporation's information security policies and procedures. ACME is a mid-sized SaaS company providing cloud-based project management solutions to enterprise customers. We process sensitive business data for approximately 15,000 active users across 500 customer organizations.
+
+Our security program is currently transitioning from a traditional perimeter-based model to a Zero Trust architecture. This policy reflects our current state and planned improvements over the next 12 months.
+
+1. IDENTITY AND ACCESS MANAGEMENT
+
+1.1 User Authentication
+- All employees must authenticate using Active Directory credentials
+- Single Sign-On (SSO) is deployed for major applications including Office 365, Salesforce, and our internal project management system
+- Multi-factor authentication (MFA) is REQUIRED for VPN access
+- MFA is OPTIONAL for other applications (currently 40% adoption rate)
+- Password requirements: Minimum 12 characters, complexity requirements enabled, 90-day rotation policy
+
+1.2 Access Control
+- Role-Based Access Control (RBAC) is partially implemented across core systems
+- Access reviews are conducted annually by department managers
+- New employee access provisioning takes 2-3 business days through IT helpdesk tickets
+- Termination access revocation process exists but sometimes delayed up to 24 hours
+- Privileged access is granted through domain admin accounts (no separate PAM solution)
+
+1.3 Known Gaps
+- No automated user provisioning/deprovisioning
+- Service accounts use static passwords stored in Excel spreadsheet
+- No identity governance platform
+- Local admin rights prevalent on developer workstations
+- No just-in-time access for elevated permissions
+
+2. DEVICE SECURITY
+
+2.1 Endpoint Management
+- Corporate-issued laptops: 80% of workforce
+- BYOD policy exists for mobile devices
+- Windows devices managed via basic Group Policy (no modern MDM)
+- MacOS devices have limited management (no Jamf or similar)
+- Traditional antivirus (Windows Defender) on all corporate PCs
+- NO endpoint detection and response (EDR) solution deployed
+
+2.2 Patch Management
+- Windows patches deployed monthly via WSUS
+- Patching cycle typically 2-3 weeks after Microsoft release
+- Critical patches expedited but still take 7-10 days
+- Third-party application patching is manual and inconsistent
+- Developer machines often exempt from automatic patching
+
+2.3 Device Compliance
+- No device health attestation before network access
+- USB ports not restricted
+- Full disk encryption required on laptops but not enforced technically
+- Mobile devices (BYOD) not enrolled in any management platform
+- No remote wipe capability for personal devices
+
+2.4 Known Gaps
+- No EDR or advanced threat protection
+- Device inventory tracked manually in spreadsheet
+- No automated compliance checking
+- Personal devices accessing corporate email without security controls
+
+3. NETWORK SECURITY
+
+3.1 Network Architecture
+- Primary datacenter in AWS us-east-1 with disaster recovery in us-west-2
+- Traditional VPN (Cisco AnyConnect) for remote access
+- VPN uses split-tunneling (not all traffic routed through corporate network)
+- Perimeter firewall protecting cloud infrastructure
+- Internal AWS network is relatively flat with basic security groups
+
+3.2 Network Segmentation
+- Production environment separated from development/staging via VPCs
+- No micro-segmentation within production environment
+- Database tier accessible from multiple application servers
+- Limited east-west traffic inspection
+- Guest WiFi (for on-site contractors) uses separate VLAN but shares internet gateway
+
+3.3 Remote Access
+- VPN required for access to internal systems
+- VPN uses certificate-based authentication plus AD credentials
+- NO zero-trust network access (ZTNA) solution
+- Split tunneling allows users to bypass corporate security controls
+- No continuous authentication or trust verification
+
+3.4 Network Monitoring
+- Basic AWS CloudWatch monitoring enabled
+- VPC Flow Logs collected but not actively analyzed
+- No network behavioral analytics
+- IDS/IPS rules outdated (last updated 18 months ago)
+- Security events generate alerts but response time varies (4-48 hours)
+
+3.5 Known Gaps
+- No zero-trust network architecture
+- Lack of micro-segmentation
+- Limited visibility into east-west traffic
+- No automated threat response
+- VPN as single point of access control
+
+4. APPLICATION SECURITY
+
+4.1 Development Security
+- Security testing performed annually by third-party firm
+- No security testing integrated into CI/CD pipeline
+- Static application security testing (SAST) used occasionally
+- Dynamic application security testing (DAST) not implemented
+- Container images not scanned for vulnerabilities
+- Secrets sometimes hardcoded in legacy applications
+
+4.2 Application Access
+- Customer-facing web application uses modern authentication (OAuth 2.0)
+- Internal applications have inconsistent authentication mechanisms
+- Some legacy systems use shared accounts
+- API security exists but not comprehensive (basic API keys, no rate limiting)
+- No web application firewall (WAF) for internal applications
+
+4.3 Application Monitoring
+- Application logging enabled for customer-facing systems
+- Logs retained for 90 days in CloudWatch
+- No runtime application self-protection (RASP)
+- No application-level threat detection
+- Incident response playbooks exist but not regularly tested
+
+4.4 Known Gaps
+- DevSecOps practices not fully implemented
+- Container security immature
+- Inconsistent authentication across application portfolio
+- Limited runtime protection
+- No comprehensive API security program
+
+5. DATA SECURITY
+
+5.1 Data Classification
+- Data classification policy exists but not widely implemented
+- Customer data marked as "Confidential" in some systems
+- No automated data discovery or classification tools
+- Data classification training provided during onboarding only
+
+5.2 Data Protection
+- Database encryption at rest enabled for production databases (AWS RDS encryption)
+- File storage (S3) does not use encryption at rest consistently
+- TLS 1.2+ enforced for data in transit for customer-facing applications
+- Internal API communications sometimes use HTTP instead of HTTPS
+- Email encryption available (S/MIME) but not enforced
+
+5.3 Data Loss Prevention
+- Basic DLP rules configured in Office 365 for credit card numbers and SSN
+- DLP not implemented for file shares or endpoint devices
+- Cloud Access Security Broker (CASB) not deployed
+- Data exfiltration monitoring limited to email gateway
+
+5.4 Data Backup and Recovery
+- Nightly backups of all production databases
+- Backups encrypted and stored in separate AWS region
+- Backup restoration tested quarterly
+- File shares backed up weekly
+- Backup retention: 30 days for daily, 12 months for monthly
+
+5.5 Known Gaps
+- No comprehensive data classification program
+- Inconsistent encryption across all data stores
+- Limited DLP coverage (email only)
+- No data access anomaly detection
+- Customer data mixed with test data in some non-production environments
+
+6. VISIBILITY AND ANALYTICS
+
+6.1 Security Monitoring
+- SIEM not implemented (using basic CloudWatch and native AWS tools)
+- Security logs collected from major systems but not centrally aggregated
+- Log analysis is manual and reactive
+- No user and entity behavior analytics (UEBA)
+- Security dashboards created in spreadsheets, updated weekly
+
+6.2 Threat Intelligence
+- No threat intelligence feeds integrated
+- Reliance on vendor security bulletins
+- No proactive threat hunting
+- Security team reviews CISA alerts manually
+
+6.3 Known Gaps
+- No centralized SIEM or log management platform
+- Limited security analytics capabilities
+- No automated threat detection
+- Lack of security orchestration, automation, and response (SOAR)
+
+7. AUTOMATION AND ORCHESTRATION
+
+7.1 Current Automation
+- Automated patch deployment for Windows (monthly cycle)
+- Automated backup jobs
+- Basic scripting for repetitive tasks
+- No security automation platform
+
+7.2 Incident Response
+- Incident response plan documented and reviewed annually
+- Manual incident response process
+- No security orchestration tools
+- Average incident response time: 4-24 hours depending on severity
+
+7.3 Known Gaps
+- No security automation platform
+- Manual incident response workflows
+- No automated threat remediation
+- Limited integration between security tools
+
+8. COMPLIANCE AND GOVERNANCE
+
+8.1 Compliance Framework
+- SOC 2 Type II audit conducted annually (last audit: November 2025, passed with 3 minor findings)
+- GDPR compliance program in place for European customers
+- Regular internal security assessments
+- Third-party penetration testing annually
+
+8.2 Security Awareness
+- Annual security awareness training for all employees
+- Phishing simulation campaigns quarterly
+- Security champions program piloted in engineering team
+
+8.3 Risk Management
+- Risk assessment conducted annually
+- Risk register maintained in spreadsheet
+- No formal risk management platform
+- Vendor risk assessments performed for critical vendors
+
+9. IMPROVEMENT ROADMAP
+
+The following initiatives are planned for implementation over the next 12 months:
+
+Phase 1 (Months 1-3):
+- Deploy EDR solution on all endpoints
+- Implement MFA for all applications (target: 100% coverage)
+- Deploy privileged access management (PAM) solution
+- Implement automated user provisioning/deprovisioning
+
+Phase 2 (Months 4-6):
+- Deploy SIEM platform with UEBA capabilities
+- Implement zero-trust network access (ZTNA) solution
+- Deploy comprehensive data classification tool
+- Implement container security scanning in CI/CD pipeline
+
+Phase 3 (Months 7-9):
+- Deploy web application firewall (WAF) for all applications
+- Implement micro-segmentation in AWS environment
+- Deploy data loss prevention on endpoints
+- Implement security orchestration and automation platform
+
+Phase 4 (Months 10-12):
+- Complete migration to zero-trust architecture
+- Implement runtime application protection
+- Deploy advanced threat intelligence platform
+- Complete DevSecOps transformation
+
+10. METRICS AND REPORTING
+
+Key security metrics tracked monthly:
+- Mean time to detect (MTTD) security incidents
+- Mean time to respond (MTTR) to security incidents
+- Percentage of endpoints with up-to-date patches
+- MFA adoption rate
+- Security awareness training completion rate
+- Number of critical/high vulnerabilities detected and remediated
+- Failed login attempts and potential account compromises
+
+Current Performance (Q4 2025):
+- MTTD: 8 hours (target: <2 hours)
+- MTTR: 18 hours (target: <4 hours)
+- Patch compliance: 82% (target: 95%)
+- MFA adoption: 45% (target: 100%)
+- Security training completion: 94% (target: 100%)
+
+CONCLUSION
+
+ACME Corporation's security program is in transition from a traditional perimeter-based approach to a modern Zero Trust architecture. While we have strong foundational controls in place, significant gaps exist in identity governance, endpoint protection, network segmentation, and security automation.
+
+Our planned 12-month roadmap addresses these gaps systematically, with a focus on high-impact improvements in the first 6 months. Investment in modern security tools and processes will position ACME to better protect our customers' data and maintain our security certifications.
+
+This policy will be reviewed and updated quarterly as we progress through our security transformation journey.
+
+Approved by:
+John Smith, Chief Information Security Officer
+Date: January 15, 2026

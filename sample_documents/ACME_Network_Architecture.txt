@@ -1,0 +1,341 @@
+ACME CORPORATION
+NETWORK ARCHITECTURE OVERVIEW
+Technical Documentation - January 2026
+
+DOCUMENT PURPOSE
+This document provides a comprehensive overview of ACME Corporation's network architecture, including cloud infrastructure, connectivity, security controls, and planned improvements. This documentation supports our ongoing Zero Trust transformation initiative.
+
+1. HIGH-LEVEL ARCHITECTURE
+
+ACME operates a cloud-first architecture primarily hosted on Amazon Web Services (AWS). Our infrastructure spans multiple AWS regions with the following distribution:
+
+Primary Region: us-east-1 (N. Virginia)
+- Production workloads: 100% of customer-facing applications
+- Production databases: PostgreSQL RDS instances, Redis ElastiCache
+- Application servers: Auto-scaling EC2 instances behind Application Load Balancers
+- Storage: S3 buckets for customer files, CloudFront CDN for content delivery
+
+Disaster Recovery Region: us-west-2 (Oregon)
+- Standby RDS replicas (cross-region read replicas)
+- Backup S3 buckets with cross-region replication
+- Dormant infrastructure ready for failover (can be activated within 4 hours)
+
+2. NETWORK TOPOLOGY
+
+2.1 Virtual Private Cloud (VPC) Structure
+
+Production VPC (10.0.0.0/16):
+- Public Subnets (10.0.1.0/24, 10.0.2.0/24): Application Load Balancers, NAT Gateways
+- Private Subnets (10.0.10.0/24, 10.0.11.0/24): Application servers (EC2 instances)
+- Database Subnets (10.0.20.0/24, 10.0.21.0/24): RDS instances, ElastiCache clusters
+- Management Subnet (10.0.100.0/24): Bastion hosts, monitoring servers
+
+Development/Staging VPC (10.1.0.0/16):
+- Similar subnet structure to Production
+- Separate VPC with VPC peering to Production for limited access
+- Development databases populated with anonymized customer data
+
+Corporate Office Network (172.16.0.0/16):
+- Small on-premises network for 50 office employees
+- AWS Site-to-Site VPN connection to Production VPC
+- Primary office in San Francisco, secondary office in Austin
+
+2.2 Internet Connectivity
+
+Public-Facing Services:
+- Customer web application accessible via CloudFront CDN
+- API endpoints via API Gateway
+- Customer documentation site (static website on S3)
+
+Outbound Internet Access:
+- Application servers access internet via NAT Gateways in public subnets
+- Outbound traffic not filtered or inspected (no egress filtering)
+- No web proxy or secure web gateway deployed
+
+2.3 Network Segmentation
+
+Current Segmentation Approach:
+- VPC-level isolation between Production and Dev/Staging environments
+- Security groups provide instance-level firewalling
+- Network ACLs (NACLs) configured at subnet level but mostly permissive
+- No micro-segmentation within Production VPC
+- Application tier can directly communicate with database tier without restrictions
+
+Security Group Configuration:
+- Web tier: Allows inbound 443 from internet (via ALB), outbound to app tier
+- App tier: Allows inbound from web tier and management subnet, outbound to database tier and internet
+- Database tier: Allows inbound from app tier on database ports, outbound to internet for patches
+- Management subnet: Allows inbound SSH/RDP from corporate VPN, outbound to all subnets
+
+Gaps in Segmentation:
+- Application servers can communicate laterally without restriction
+- Database servers accessible from all application servers (no per-application isolation)
+- No inspection of east-west traffic between subnets
+- Overly permissive security group rules in some cases (e.g., 0.0.0.0/0 for some outbound rules)
+
+3. REMOTE ACCESS
+
+3.1 VPN Infrastructure
+
+Corporate VPN:
+- Cisco AnyConnect SSL VPN
+- Deployed on EC2 instances in management subnet
+- Capacity: 200 concurrent connections
+- Current utilization: 80-120 concurrent users (60% remote workforce)
+- Authentication: Active Directory credentials + certificate (no MFA currently)
+- Split tunneling enabled (only corporate network traffic routed through VPN)
+
+Site-to-Site VPN:
+- AWS Virtual Private Gateway connecting corporate office to Production VPC
+- IPsec tunnel with BGP routing
+- Backup connection via redundant tunnel
+- Bandwidth: 100 Mbps per tunnel
+
+3.2 Bastion Hosts
+
+Management Access:
+- Two bastion hosts in management subnet for SSH/RDP access to internal systems
+- Bastion hosts accessible only via VPN
+- Session logging enabled via CloudWatch
+- SSH key management is manual (keys distributed via shared folder)
+- No privileged access management (PAM) solution
+- No just-in-time access - engineers have persistent access
+
+Security Concerns:
+- Bastion hosts represent single point of access control failure
+- No session recording or playback capability
+- SSH keys not rotated regularly
+- No zero-trust network access (ZTNA) alternative
+
+4. NETWORK SECURITY CONTROLS
+
+4.1 Perimeter Security
+
+AWS Network Firewall: NOT DEPLOYED
+- Currently relying on security groups and NACLs only
+- No network-level threat detection
+- No intrusion prevention system (IPS)
+
+Web Application Firewall (WAF):
+- AWS WAF deployed on CloudFront distribution only
+- Protects customer-facing website
+- Basic ruleset: SQL injection, XSS, rate limiting
+- Custom rules for blocking known bad IPs
+- NOT deployed on internal Application Load Balancers
+- API Gateway does not have WAF protection
+
+DDoS Protection:
+- AWS Shield Standard (default protection)
+- AWS Shield Advanced NOT subscribed
+- CloudFront provides some DDoS mitigation for customer website
+- Application layer DDoS attacks rely on WAF rate limiting only
+
+4.2 Traffic Inspection
+
+Current State:
+- VPC Flow Logs enabled for Production VPC
+- Flow logs sent to CloudWatch Logs
+- Flow logs retained for 30 days
+- Flow logs NOT actively analyzed (no automated anomaly detection)
+- No network traffic analysis (NTA) solution
+
+Visibility Gaps:
+- No deep packet inspection
+- Cannot detect lateral movement within VPC
+- Limited visibility into encrypted traffic
+- No network behavioral analytics
+
+4.3 DNS Security
+
+DNS Configuration:
+- Route 53 for external DNS (customer-facing domains)
+- Internal DNS via AWS-provided DNS resolver
+- No DNS filtering or threat intelligence integration
+- No DNSSEC validation
+- DNS query logging not enabled
+
+5. LOAD BALANCING AND TRAFFIC DISTRIBUTION
+
+5.1 Application Load Balancers (ALB)
+
+Customer Web Application:
+- Internet-facing ALB in public subnets
+- SSL/TLS termination at ALB (ACM certificates with auto-renewal)
+- Health checks every 30 seconds
+- Cross-zone load balancing enabled
+- Session stickiness via cookies
+
+Internal Services:
+- Internal ALBs for microservices communication
+- No TLS encryption between ALB and backend targets (HTTP only internally)
+- Access logs enabled but not regularly reviewed
+
+5.2 Auto Scaling
+
+Application Tier:
+- Auto Scaling Groups for web and app tiers
+- Scaling based on CPU utilization (target: 70%)
+- Min: 4 instances, Max: 20 instances per tier
+- Scale-up: Add 2 instances when CPU > 70% for 5 minutes
+- Scale-down: Remove 1 instance when CPU < 30% for 10 minutes
+
+6. MONITORING AND LOGGING
+
+6.1 Network Monitoring
+
+CloudWatch Metrics:
+- Network traffic metrics for ALBs, NAT Gateways, VPN
+- Custom metrics for application-level network performance
+- Alarms configured for high traffic volumes and error rates
+- Dashboards created but not actively monitored 24/7
+
+VPC Flow Logs:
+- Enabled for Production VPC
+- Captures accepted and rejected traffic
+- Logs stored in CloudWatch Logs
+- No automated analysis or correlation
+- Manual review only during incident response
+
+6.2 Log Aggregation
+
+Current Logging:
+- VPC Flow Logs: CloudWatch Logs (30-day retention)
+- ALB Access Logs: S3 bucket (90-day retention, then lifecycle to Glacier)
+- Application Logs: CloudWatch Logs (per-application log groups, 90-day retention)
+- VPN Logs: Syslog to local file on VPN server (7-day rotation)
+
+Log Management Gaps:
+- No centralized SIEM solution
+- Logs not correlated across systems
+- No real-time log analysis
+- No automated alerting based on log patterns
+- Limited log retention for older data
+
+7. SECURITY SERVICES
+
+7.1 AWS Security Services
+
+Currently Enabled:
+- AWS Config: Tracking configuration changes
+- AWS CloudTrail: API activity logging (all regions, 90-day retention)
+- Amazon GuardDuty: Threat detection for AWS accounts (findings reviewed weekly)
+- AWS Security Hub: Aggregates findings from GuardDuty, Config, Inspector (not actively monitored)
+
+Not Enabled:
+- AWS Network Firewall
+- AWS Firewall Manager
+- Amazon Detective
+- Amazon Macie (data discovery and protection)
+
+7.2 Third-Party Security Tools
+
+Currently Deployed:
+- Qualys Cloud Agent: Vulnerability scanning on EC2 instances (monthly scans)
+- Tenable.io: External vulnerability scanning of internet-facing assets (quarterly scans)
+
+Not Deployed:
+- Network detection and response (NDR) solution
+- Cloud access security broker (CASB)
+- Cloud workload protection platform (CWPP)
+- Container security platform
+
+8. COMPLIANCE AND GOVERNANCE
+
+8.1 Network Security Standards
+
+Internal Standards:
+- All production systems must be in private subnets (enforced)
+- TLS 1.2+ required for customer-facing communications (enforced)
+- SSH keys must be unique per user (not enforced - shared keys exist)
+- Bastion hosts required for administrative access (enforced)
+- Security groups must follow least-privilege (partially enforced)
+
+Compliance Requirements:
+- SOC 2 Type II: Network security controls reviewed annually
+- GDPR: Network segmentation for EU customer data (in progress)
+- PCI DSS: Not currently required but may be needed in future
+
+8.2 Change Management
+
+Network Changes:
+- Change requests submitted via JIRA
+- Network architecture changes require approval from infrastructure team lead
+- Emergency changes can be implemented without pre-approval (documented post-change)
+- Network diagrams updated quarterly (currently 2 months out of date)
+
+9. PLANNED IMPROVEMENTS (12-MONTH ROADMAP)
+
+Phase 1: Immediate Security Enhancements (Months 1-3)
+- Deploy AWS Network Firewall for traffic inspection
+- Implement MFA for VPN access
+- Enable VPN full tunneling (disable split tunneling)
+- Implement SSH key rotation policy
+- Enable DNS query logging in Route 53
+
+Phase 2: Zero Trust Network Access (Months 4-6)
+- Evaluate and select ZTNA solution (candidates: Zscaler ZPA, Cloudflare Access, Perimeter 81)
+- Pilot ZTNA with engineering team
+- Implement micro-segmentation in Production VPC using security groups and NACLs
+- Deploy TLS encryption for internal ALB to EC2 communication
+- Implement network behavioral analytics
+
+Phase 3: Advanced Monitoring (Months 7-9)
+- Deploy centralized SIEM (candidates: Splunk Cloud, Sumo Logic, Elastic Security)
+- Integrate VPC Flow Logs, application logs, and security tool findings into SIEM
+- Implement automated threat detection and alerting
+- Deploy NDR solution for lateral movement detection
+- Implement security orchestration for automated response
+
+Phase 4: Complete Zero Trust Architecture (Months 10-12)
+- Replace VPN with ZTNA for all users
+- Decommission bastion hosts in favor of just-in-time access via PAM
+- Implement service mesh for microservices (Istio or AWS App Mesh)
+- Deploy container network policies in EKS clusters
+- Achieve continuous verification of all network access
+
+10. RISK ASSESSMENT
+
+Current Network Security Risks (Prioritized):
+
+HIGH RISK:
+1. Lack of network micro-segmentation - enables lateral movement if perimeter breached
+2. No MFA for VPN - weak authentication for critical access point
+3. Split tunneling on VPN - allows unmonitored traffic and potential malware infection
+4. Overly permissive security groups - violates least-privilege principle
+5. No egress filtering - cannot prevent data exfiltration or C2 communication
+
+MEDIUM RISK:
+6. No TLS encryption for internal communications - lateral traffic not encrypted
+7. Limited network visibility - cannot detect anomalous behavior or lateral movement
+8. Manual SSH key management - keys not rotated, potentially shared
+9. No ZTNA - reliance on VPN as single access control mechanism
+10. GuardDuty findings not actively monitored - delayed threat response
+
+LOW RISK:
+11. Network diagrams out of date - documentation lag
+12. No DNSSEC - potential DNS spoofing (mitigated by TLS at application layer)
+13. Limited DDoS protection - Shield Standard only (acceptable for current scale)
+
+11. NETWORK PERFORMANCE METRICS
+
+Current Performance (Q4 2025 Average):
+- Application response time: 250ms (95th percentile)
+- Database query latency: 15ms (average)
+- VPN latency: 45ms (average)
+- Inter-region replication lag: 2 seconds (average)
+- ALB healthy target count: 99.7% availability
+
+Network Capacity:
+- Peak bandwidth utilization: 2.5 Gbps (NAT Gateway capacity: 45 Gbps)
+- VPN concurrent connections: peak 120 / capacity 200 (60% utilization)
+- API requests: 500 req/sec average, 2000 req/sec peak (capacity: 10,000 req/sec)
+
+CONCLUSION
+
+ACME's network architecture is cloud-native and scalable, but security controls lag behind best practices for Zero Trust. The network is built on sound AWS foundations but lacks micro-segmentation, advanced threat detection, and zero-trust access controls.
+
+Our 12-month roadmap prioritizes high-risk gaps including micro-segmentation, ZTNA deployment, and enhanced monitoring. These improvements will significantly strengthen our security posture and align with Zero Trust principles.
+
+Prepared by: Infrastructure Team
+Review Date: January 15, 2026
+Next Review: April 15, 2026
